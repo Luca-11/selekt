@@ -93,12 +93,6 @@ function getPartialScore(page: PageObjectResponse, prop: string): boolean {
   return false;
 }
 
-function getCheckbox(page: PageObjectResponse, prop: string): boolean {
-  const property = page.properties[prop];
-  if (!property || property.type !== "checkbox") return false;
-  return property.checkbox;
-}
-
 function collectBadges(page: PageObjectResponse, ...props: string[]): string[] {
   return props.flatMap((prop) => {
     const select = getSelect(page, prop);
@@ -136,7 +130,6 @@ function pageToBrand(page: PageObjectResponse): Brand {
     score: parseNumberFromProperty(page, NOTION_PROPERTIES.score, 0),
     maxScore: parseNumberFromProperty(page, NOTION_PROPERTIES.maxScore, 5) || 5,
     partial: getPartialScore(page, NOTION_PROPERTIES.partial),
-    featured: getCheckbox(page, NOTION_PROPERTIES.featured),
     desc: getTextOrSelect(page, NOTION_PROPERTIES.description) || "À compléter",
     tags: collectBadges(
       page,
@@ -263,7 +256,6 @@ function buildNotionProperties(input: PublishBrandInput) {
     [NOTION_PROPERTIES.maxScore]: richTextProp(String(input.maxScore)),
     [NOTION_PROPERTIES.partial]: selectProp(input.partial ? "Oui" : "Non"),
     [NOTION_PROPERTIES.description]: selectProp(input.desc || "À compléter", 2000),
-    [NOTION_PROPERTIES.featured]: { checkbox: input.featured },
   };
 
   if (input.actu?.trim()) {

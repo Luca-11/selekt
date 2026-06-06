@@ -436,13 +436,6 @@ input:focus-visible {
   transition-duration: var(--duration-fast);
 }
 
-.brand-card--featured {
-  border: 1.5px solid #4ade80;
-  box-shadow:
-    var(--shadow-sm),
-    0 0 0 1px rgba(74, 222, 128, 0.15);
-}
-
 .brand-card__external {
   position: absolute;
   top: 14px;
@@ -651,22 +644,6 @@ input:focus-visible {
   margin-top: 3px;
 }
 
-.brand-image__badge {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: #111;
-  background: #4ade80;
-  padding: 3px 10px;
-  border-radius: 999px;
-  transition: transform var(--duration-normal) var(--ease-out);
-}
-
-.brand-card:hover .brand-image__badge {
-  transform: translateY(-2px);
-}
-
 .footer {
   border-top: 1px solid var(--border-subtle);
   padding: 20px 24px;
@@ -713,7 +690,6 @@ input:focus-visible {
   .brand-card__social-link,
   .brand-image__photo,
   .brand-image__gradient,
-  .brand-image__badge,
   .filter,
   .search,
   .search__clear,
@@ -752,14 +728,6 @@ input:focus-visible {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 16px;
-  }
-
-  .brand-card--featured {
-    grid-column: 1 / -1;
-  }
-
-  .brand-card--featured .brand-image {
-    height: 260px;
   }
 }
 

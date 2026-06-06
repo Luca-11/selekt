@@ -14,7 +14,6 @@ export interface Brand {
   score: number;
   maxScore: number;
   partial: boolean;
-  featured: boolean;
   desc: string;
   tags: string[];
   color: string;
@@ -40,7 +39,6 @@ export const NOTION_PROPERTIES = {
   badge2: "Badge 2",
   badge3: "Badge 3",
   actu: "Actu / Dernier drop",
-  featured: "Coup de coeur",
   color: "Couleur",
   accent: "Accent",
   image: "Image",

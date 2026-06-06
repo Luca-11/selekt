@@ -51,7 +51,6 @@ export function BrandImage({ brand }: BrandImageProps) {
             {brand.origin} · {brand.category}
           </div>
         </div>
-        {brand.featured && <span className="brand-image__badge">Coup de cœur</span>}
       </div>
     </div>
   );

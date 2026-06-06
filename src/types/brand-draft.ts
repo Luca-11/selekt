@@ -31,7 +31,6 @@ export interface PublishBrandInput extends BrandDraft {
   score: number;
   maxScore: number;
   partial: boolean;
-  featured: boolean;
 }
 
 export const SOCIAL_FIELDS = [

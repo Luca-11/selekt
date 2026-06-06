@@ -55,7 +55,6 @@ function validateInput(body: unknown): PublishBrandInput | null {
     score: Number.isFinite(score) ? Math.min(5, Math.max(0, score)) : 0,
     maxScore: Number.isFinite(maxScore) ? Math.min(5, Math.max(1, maxScore)) : 5,
     partial: Boolean(b.partial),
-    featured: Boolean(b.featured),
   };
 }
 

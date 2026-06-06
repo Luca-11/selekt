@@ -30,7 +30,6 @@ Crée ou adapte ta base Notion avec ces colonnes **(noms exacts)** :
 | **Description courte** | Texte ou Sélection |
 | **Badge 1**, **Badge 2**, **Badge 3** | Sélection ou Texte |
 | **Actu / Dernier drop** | Texte |
-| **Coup de coeur** | Case à cocher |
 | **Couleur**, **Accent** | Texte *(optionnel — palette auto sinon)* |
 | **Image** | URL *(hero sur les cartes)* |
 | **Logo** | URL |
@@ -73,7 +72,7 @@ Redémarre `npm run dev`. Le bandeau « Données locales » disparaît quand Not
 2. Colle l'URL → **Analyser** → vérifie le brouillon
 3. Ajoute hero, score, réseaux → **Publier dans Notion**
 
-**Backfill** : republie la **même URL** — la fiche Notion existante est **mise à jour** (image, réseaux, coup de cœur…) au lieu de créer un doublon.
+**Backfill** : republie la **même URL** — la fiche Notion existante est **mise à jour** (image, réseaux, etc.) au lieu de créer un doublon.
 
 ### IA (optionnel)
 

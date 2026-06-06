@@ -9,9 +9,7 @@ interface BrandCardProps {
 }
 
 export function BrandCard({ brand }: BrandCardProps) {
-  const className = ["brand-card", brand.featured ? "brand-card--featured" : ""]
-    .filter(Boolean)
-    .join(" ");
+  const className = "brand-card";
 
   const main = (
     <>

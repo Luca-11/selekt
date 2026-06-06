@@ -23,7 +23,6 @@ function brand(
     score: 0,
     maxScore: 5,
     partial: true,
-    featured: false,
     desc,
     tags,
     color: palette.color,
@@ -35,7 +34,7 @@ function brand(
 
 /** Données locales — utilisées si Notion n'est pas configuré */
 export const fallbackBrands: Brand[] = [
-  brand(1, "Akimbo", "https://akimbo.store", "Streetwear", "UK", "Premium", ["Petites séries", "Matières soignées", "Identité forte"], "Pièces sculptées, univers cohérent. Une des rares marques indé avec une vraie identité visuelle de bout en bout.", { score: 5, maxScore: 5, partial: false, featured: true, color: "#1a1a1a", accent: "#c8b89a" }),
+  brand(1, "Akimbo", "https://akimbo.store", "Streetwear", "UK", "Premium", ["Petites séries", "Matières soignées", "Identité forte"], "Pièces sculptées, univers cohérent. Une des rares marques indé avec une vraie identité visuelle de bout en bout.", { score: 5, maxScore: 5, partial: false, color: "#1a1a1a", accent: "#c8b89a" }),
   brand(2, "Derschutze", "https://derschutze.com", "Streetwear", "Allemagne", "Milieu de gamme", ["Indé", "Streetwear"]),
   brand(3, "Sweats EU", "https://sweatseu.com", "Streetwear", "EU", "Milieu de gamme", ["Essentials", "EU"]),
   brand(4, "Shinzo", "https://shinzo.paris", "Streetwear", "Paris, FR", "Milieu de gamme", ["Made in FR", "Streetwear"]),

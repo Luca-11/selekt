@@ -72,7 +72,6 @@ export function AdminPanel() {
   const [score, setScore] = useState(3);
   const [maxScore] = useState(5);
   const [partial, setPartial] = useState(true);
-  const [featured, setFeatured] = useState(false);
   const [publishedName, setPublishedName] = useState("");
   const [publishedUpdated, setPublishedUpdated] = useState(false);
 
@@ -143,7 +142,6 @@ export function AdminPanel() {
     setAiAvailable(Boolean(data.aiAvailable));
     setScore(0);
     setPartial(true);
-    setFeatured(false);
     setStep("review");
   }
 
@@ -178,7 +176,7 @@ export function AdminPanel() {
     const res = await fetch("/api/brands", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...draft, score, maxScore, partial, featured }),
+      body: JSON.stringify({ ...draft, score, maxScore, partial }),
     });
 
     const data = (await res.json()) as {
@@ -467,14 +465,6 @@ export function AdminPanel() {
                 onChange={(e) => setPartial(e.target.checked)}
               />
               Score partiel (infos incomplètes)
-            </label>
-            <label>
-              <input
-                type="checkbox"
-                checked={featured}
-                onChange={(e) => setFeatured(e.target.checked)}
-              />
-              Coup de cœur
             </label>
           </div>
 
