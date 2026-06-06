@@ -746,8 +746,121 @@ input:focus-visible {
   min-height: 100vh;
   background: var(--bg);
   padding: 24px;
-  max-width: 640px;
+  max-width: 720px;
   margin: 0 auto;
+}
+
+.admin__hub {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.admin__hub-actions button {
+  padding: 12px 18px;
+  border: none;
+  border-radius: 10px;
+  background: #111;
+  color: #fff;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.admin__hub-empty {
+  margin: 0;
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.admin__list-search {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 16px;
+}
+
+.admin__list-search input {
+  font: inherit;
+  padding: 10px 12px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+.admin__brand-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin__brand-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  background: var(--bg);
+}
+
+.admin__brand-row__info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.admin__brand-row__info strong {
+  font-size: 14px;
+}
+
+.admin__brand-row__info span {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
+  font-family: var(--font-mono);
+}
+
+.admin__brand-row__actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.admin__back-btn {
+  margin-bottom: 12px;
+}
+
+.admin__danger {
+  padding: 8px 12px;
+  border: 1px solid rgba(220, 38, 38, 0.25);
+  border-radius: 8px;
+  background: #fff;
+  color: #dc2626;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.admin__danger:hover {
+  background: #fef2f2;
+}
+
+.admin__danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.admin__error--block {
+  padding: 12px 14px;
+  background: #fef2f2;
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  border-radius: 10px;
 }
 
 .admin__header {

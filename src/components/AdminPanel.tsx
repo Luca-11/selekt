@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { Brand } from "@/types/brand";
 import type { BrandDraft, BrandSocial, ScrapeResult } from "@/types/brand-draft";
 import {
   BADGE_SUGGESTIONS,
@@ -9,10 +10,11 @@ import {
   PRICE_OPTIONS,
   SOCIAL_FIELDS,
 } from "@/types/brand-draft";
+import { brandToAdminForm } from "@/lib/brand-admin";
 import { getPriceTier } from "@/lib/price-tier";
 import { scoreColor } from "@/lib/score";
 
-type Step = "login" | "url" | "review" | "done";
+type Step = "login" | "hub" | "url" | "review" | "done";
 
 function AdminMediaPreview({
   src,
@@ -66,14 +68,39 @@ export function AdminPanel() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [hints, setHints] = useState<string[]>([]);
-  const [source, setSource] = useState<"ai" | "meta">("meta");
+  const [source, setSource] = useState<"ai" | "meta" | "edit">("meta");
   const [aiAvailable, setAiAvailable] = useState(false);
-  const [draft, setDraft] = useState<BrandDraft>(emptyDraft);
+  const [draft, setDraft] = useState<BrandDraft>(emptyDraft());
   const [score, setScore] = useState(3);
-  const [maxScore] = useState(5);
+  const [maxScore, setMaxScore] = useState(5);
   const [partial, setPartial] = useState(true);
   const [publishedName, setPublishedName] = useState("");
   const [publishedUpdated, setPublishedUpdated] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [brandsSource, setBrandsSource] = useState<"notion" | "fallback">("fallback");
+  const [brandsLoading, setBrandsLoading] = useState(false);
+  const [listQuery, setListQuery] = useState("");
+
+  const isEditing = Boolean(editingId);
+
+  const loadBrands = useCallback(async () => {
+    setBrandsLoading(true);
+    try {
+      const res = await fetch("/api/brands");
+      const data = (await res.json()) as {
+        brands?: Brand[];
+        source?: "notion" | "fallback";
+      };
+      setBrands(data.brands ?? []);
+      setBrandsSource(data.source ?? "fallback");
+    } catch {
+      setBrands([]);
+      setBrandsSource("fallback");
+    } finally {
+      setBrandsLoading(false);
+    }
+  }, []);
 
   const checkSession = useCallback(async () => {
     const res = await fetch("/api/admin/session");
@@ -83,12 +110,28 @@ export function AdminPanel() {
       setStep("login");
       return;
     }
-    setStep(data.authenticated ? "url" : "login");
-  }, []);
+    if (data.authenticated) {
+      setStep("hub");
+      await loadBrands();
+    } else {
+      setStep("login");
+    }
+  }, [loadBrands]);
 
   useEffect(() => {
     checkSession();
   }, [checkSession]);
+
+  const filteredBrands = useMemo(() => {
+    const q = listQuery.trim().toLowerCase();
+    if (!q) return brands;
+    return brands.filter(
+      (b) =>
+        b.name.toLowerCase().includes(q) ||
+        b.category.toLowerCase().includes(q) ||
+        b.origin.toLowerCase().includes(q),
+    );
+  }, [brands, listQuery]);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -110,13 +153,41 @@ export function AdminPanel() {
     }
 
     setPassword("");
+    setStep("hub");
+    await loadBrands();
+  }
+
+  function startNewBrand() {
+    setEditingId(null);
+    setUrl("");
+    setDraft(emptyDraft());
+    setError("");
+    setHints([]);
+    setScore(0);
+    setMaxScore(5);
+    setPartial(true);
+    setSource("meta");
     setStep("url");
+  }
+
+  function openEdit(brand: Brand) {
+    const form = brandToAdminForm(brand);
+    setEditingId(form.notionId);
+    setDraft(form.draft);
+    setScore(form.score);
+    setMaxScore(form.maxScore);
+    setPartial(form.partial);
+    setHints([]);
+    setSource("edit");
+    setError("");
+    setStep("review");
   }
 
   async function handleScrape(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
+    setEditingId(null);
 
     const res = await fetch("/api/scrape", {
       method: "POST",
@@ -141,6 +212,7 @@ export function AdminPanel() {
     setHints(data.hints ?? []);
     setAiAvailable(Boolean(data.aiAvailable));
     setScore(0);
+    setMaxScore(5);
     setPartial(true);
     setStep("review");
   }
@@ -173,16 +245,18 @@ export function AdminPanel() {
     setError("");
     setLoading(true);
 
-    const res = await fetch("/api/brands", {
-      method: "POST",
+    const payload = { ...draft, score, maxScore, partial };
+    const res = await fetch(isEditing ? `/api/brands/${editingId}` : "/api/brands", {
+      method: isEditing ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...draft, score, maxScore, partial }),
+      body: JSON.stringify(payload),
     });
 
     const data = (await res.json()) as {
       ok?: boolean;
       name?: string;
       created?: boolean;
+      updated?: boolean;
       error?: string;
     };
     setLoading(false);
@@ -193,8 +267,43 @@ export function AdminPanel() {
     }
 
     setPublishedName(data.name ?? draft.name);
-    setPublishedUpdated(data.created === false);
+    setPublishedUpdated(isEditing || data.created === false);
+    setEditingId(null);
+    await loadBrands();
     setStep("done");
+  }
+
+  async function handleDeleteBrand(brandId: string, brandName: string) {
+    if (brandsSource !== "notion") {
+      setError("Notion non branché — suppression impossible.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Supprimer « ${brandName} » de Notion ?\n\nLa carte disparaîtra du site.`,
+    );
+    if (!confirmed) return;
+
+    setError("");
+    setLoading(true);
+
+    const res = await fetch(`/api/brands/${brandId}`, { method: "DELETE" });
+    const data = (await res.json()) as { error?: string };
+
+    setLoading(false);
+
+    if (!res.ok) {
+      setError(data.error ?? "Erreur de suppression");
+      return;
+    }
+
+    if (editingId === brandId) {
+      setEditingId(null);
+      setDraft(emptyDraft());
+      setStep("hub");
+    }
+
+    await loadBrands();
   }
 
   async function handleLogout() {
@@ -202,12 +311,24 @@ export function AdminPanel() {
     setStep("login");
   }
 
-  function resetForAnother() {
+  function backFromReview() {
+    setError("");
+    if (isEditing) {
+      setEditingId(null);
+      setStep("hub");
+      return;
+    }
+    setStep("url");
+  }
+
+  function resetAfterDone() {
     setUrl("");
     setDraft(emptyDraft());
     setError("");
     setHints([]);
-    setStep("url");
+    setEditingId(null);
+    setStep("hub");
+    loadBrands();
   }
 
   function useLogoAsHero() {
@@ -216,6 +337,18 @@ export function AdminPanel() {
 
   const scoreHue = scoreColor(score, maxScore);
 
+  const headerTitle =
+    step === "hub"
+      ? "Gérer les marques"
+      : step === "review" && isEditing
+        ? `Modifier — ${draft.name || "…"}`
+        : "Ajouter une marque";
+
+  const headerSubtitle =
+    step === "hub"
+      ? "Modifie ou supprime une fiche existante, ou ajoute-en une nouvelle."
+      : "Colle une URL, vérifie, publie — Notion se met à jour tout seul.";
+
   return (
     <div className="admin">
       <header className="admin__header">
@@ -223,8 +356,8 @@ export function AdminPanel() {
           <Link href="/" className="admin__back">
             ← Selekt
           </Link>
-          <h1>Ajouter une marque</h1>
-          <p>Colle une URL, vérifie, publie — Notion se met à jour tout seul.</p>
+          <h1>{headerTitle}</h1>
+          <p>{headerSubtitle}</p>
         </div>
         {step !== "login" && (
           <button type="button" className="admin__logout" onClick={handleLogout}>
@@ -233,13 +366,14 @@ export function AdminPanel() {
         )}
       </header>
 
-      {!aiAvailable && step !== "login" && (
+      {!aiAvailable && step !== "login" && step !== "hub" && source !== "edit" && (
         <div className="admin__banner">
           Mode meta actif — ajoute <code>OPENAI_API_KEY</code> (ChatGPT) dans{" "}
-          <code>.env.local</code>. Supprime ou commente <code>ANTHROPIC_API_KEY</code> si tu
-          n&apos;utilises pas Claude.
+          <code>.env.local</code>.
         </div>
       )}
+
+      {error && step === "hub" && <p className="admin__error admin__error--block">{error}</p>}
 
       {step === "login" && (
         <form className="admin__card" onSubmit={handleLogin}>
@@ -259,29 +393,107 @@ export function AdminPanel() {
         </form>
       )}
 
+      {step === "hub" && (
+        <div className="admin__hub">
+          <div className="admin__hub-actions">
+            <button type="button" onClick={startNewBrand}>
+              + Nouvelle marque (URL)
+            </button>
+          </div>
+
+          {brandsSource !== "notion" ? (
+            <div className="admin__card">
+              <p className="admin__hub-empty">
+                Notion non branché — connecte <code>NOTION_TOKEN</code> et{" "}
+                <code>NOTION_DATABASE_ID</code> pour gérer les fiches.
+              </p>
+            </div>
+          ) : (
+            <div className="admin__card admin__card--wide">
+              <label className="admin__list-search">
+                Rechercher
+                <input
+                  type="search"
+                  value={listQuery}
+                  onChange={(e) => setListQuery(e.target.value)}
+                  placeholder="Nom, catégorie, pays…"
+                />
+              </label>
+
+              {brandsLoading ? (
+                <p className="admin__hub-empty">Chargement…</p>
+              ) : filteredBrands.length === 0 ? (
+                <p className="admin__hub-empty">Aucune marque trouvée.</p>
+              ) : (
+                <ul className="admin__brand-list">
+                  {filteredBrands.map((brand) => (
+                    <li key={brand.id} className="admin__brand-row">
+                      <div className="admin__brand-row__info">
+                        <strong>{brand.name}</strong>
+                        <span>
+                          {brand.category} · {brand.origin} · {brand.score}/{brand.maxScore}
+                        </span>
+                      </div>
+                      <div className="admin__brand-row__actions">
+                        <button
+                          type="button"
+                          className="admin__secondary"
+                          onClick={() => openEdit(brand)}
+                        >
+                          Modifier
+                        </button>
+                        <button
+                          type="button"
+                          className="admin__danger"
+                          onClick={() => handleDeleteBrand(brand.id, brand.name)}
+                          disabled={loading}
+                        >
+                          Supprimer
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {step === "url" && (
-        <form className="admin__card" onSubmit={handleScrape}>
-          <label htmlFor="brand-url">URL du site de la marque</label>
-          <input
-            id="brand-url"
-            type="url"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://akimbo.store"
-            required
-          />
-          {error && <p className="admin__error">{error}</p>}
-          <button type="submit" disabled={loading || !url.trim()}>
-            {loading ? "Analyse en cours…" : "Analyser"}
+        <>
+          <button type="button" className="admin__secondary admin__back-btn" onClick={() => setStep("hub")}>
+            ← Retour à la liste
           </button>
-        </form>
+          <form className="admin__card" onSubmit={handleScrape}>
+            <label htmlFor="brand-url">URL du site de la marque</label>
+            <input
+              id="brand-url"
+              type="url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://akimbo.store"
+              required
+            />
+            {error && <p className="admin__error">{error}</p>}
+            <button type="submit" disabled={loading || !url.trim()}>
+              {loading ? "Analyse en cours…" : "Analyser"}
+            </button>
+          </form>
+        </>
       )}
 
       {step === "review" && (
         <form className="admin__card admin__card--wide" onSubmit={handlePublish}>
           <div className="admin__meta">
-            <span className={`admin__pill admin__pill--${source}`}>
-              {source === "ai" ? "Enrichi par IA" : "Extraction meta"}
+            <span
+              className={`admin__pill admin__pill--${source === "edit" ? "meta" : source}`}
+            >
+              {source === "ai"
+                ? "Enrichi par IA"
+                : source === "edit"
+                  ? "Modification manuelle"
+                  : "Extraction meta"}
             </span>
             {hints.map((hint) => (
               <span key={hint} className="admin__hint">
@@ -308,14 +520,14 @@ export function AdminPanel() {
               <div className="admin__preview-img admin__preview-img--inline">
                 <AdminMediaPreview
                   src={draft.imageUrl}
-                  emptyLabel="L'IA la remplira si disponible — ou colle une URL"
+                  emptyLabel="Colle une URL d'image"
                 />
               </div>
               <input
                 type="text"
                 value={draft.imageUrl ?? ""}
                 onChange={(e) => updateDraft("imageUrl", e.target.value)}
-                placeholder="https://… (campagnes, produit, Instagram…)"
+                placeholder="https://…"
               />
               {draft.logoUrl && (
                 <div className="admin__media-actions">
@@ -324,15 +536,11 @@ export function AdminPanel() {
                   </button>
                 </div>
               )}
-              <p className="admin__media-help">
-                Pré-remplie par l&apos;IA quand elle est disponible — tu peux toujours la
-                remplacer ici (colle une URL ou utilise le logo temporairement).
-              </p>
             </div>
           </div>
 
           <fieldset className="admin__social">
-            <legend>Réseaux sociaux (auto si trouvés dans le HTML)</legend>
+            <legend>Réseaux sociaux</legend>
             <div className="admin__social-grid">
               {SOCIAL_FIELDS.map(({ key, label, placeholder }) => (
                 <label key={key}>
@@ -451,10 +659,6 @@ export function AdminPanel() {
               className="admin__slider"
               style={{ accentColor: scoreHue }}
             />
-            <div className="admin__score-legend">
-              <span>Rouge</span>
-              <span>Vert</span>
-            </div>
           </div>
 
           <div className="admin__checks">
@@ -471,17 +675,32 @@ export function AdminPanel() {
           {error && <p className="admin__error">{error}</p>}
 
           <div className="admin__actions">
-            <button type="button" className="admin__secondary" onClick={() => setStep("url")}>
-              ← Autre URL
+            <button type="button" className="admin__secondary" onClick={backFromReview}>
+              ← {isEditing ? "Liste" : "Autre URL"}
             </button>
+            {isEditing && editingId && (
+              <button
+                type="button"
+                className="admin__danger"
+                disabled={loading}
+                onClick={() => handleDeleteBrand(editingId, draft.name)}
+              >
+                Supprimer
+              </button>
+            )}
             <button type="submit" disabled={loading}>
-              {loading ? "Publication…" : "Publier dans Notion"}
+              {loading
+                ? "Enregistrement…"
+                : isEditing
+                  ? "Enregistrer"
+                  : "Publier dans Notion"}
             </button>
           </div>
-          <p className="admin__upsert-hint">
-            Si l&apos;URL existe déjà dans Notion, la fiche sera mise à jour (backfill image,
-            réseaux, etc.).
-          </p>
+          {!isEditing && (
+            <p className="admin__upsert-hint">
+              Si l&apos;URL existe déjà dans Notion, la fiche sera mise à jour.
+            </p>
+          )}
         </form>
       )}
 
@@ -490,14 +709,10 @@ export function AdminPanel() {
           <h2>
             {publishedName} {publishedUpdated ? "mis à jour" : "ajouté"} ✓
           </h2>
-          <p>
-            {publishedUpdated
-              ? "La fiche Notion existante a été mise à jour. Le site se rafraîchit sous ~5 min (ou immédiatement au reload)."
-              : "La marque a été ajoutée dans Notion. Elle apparaît sur le site dans quelques secondes."}
-          </p>
+          <p>Les changements sont dans Notion. Le site se met à jour sous ~5 min.</p>
           <div className="admin__actions">
-            <button type="button" onClick={resetForAnother}>
-              Ajouter une autre
+            <button type="button" onClick={resetAfterDone}>
+              Retour à la liste
             </button>
             <Link href="/" className="admin__link-btn">
               Voir le site

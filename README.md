@@ -66,13 +66,12 @@ OPENAI_MODEL=gpt-4o-mini
 
 Redémarre `npm run dev`. Le bandeau « Données locales » disparaît quand Notion répond.
 
-## Admin — ajouter / mettre à jour une marque
+## Admin — ajouter / modifier / supprimer
 
-1. Va sur [http://localhost:3000/admin](http://localhost:3000/admin)
-2. Colle l'URL → **Analyser** → vérifie le brouillon
-3. Ajoute hero, score, réseaux → **Publier dans Notion**
-
-**Backfill** : republie la **même URL** — la fiche Notion existante est **mise à jour** (image, réseaux, etc.) au lieu de créer un doublon.
+1. Va sur `/admin`
+2. **Liste** : toutes les marques Notion — Modifier ou Supprimer
+3. **Nouvelle marque** : colle une URL → Analyser → Publier
+4. Republier la **même URL** met aussi à jour une fiche existante
 
 ### IA (optionnel)
 
@@ -101,7 +100,9 @@ Le site rebuild automatiquement. L'admin est protégé par mot de passe cookie �
 | Route | Méthode | Description |
 |-------|---------|-------------|
 | `/api/brands` | GET | Liste des marques |
-| `/api/brands` | POST | Publier / mettre à jour (admin) |
+| `/api/brands` | POST | Publier / mettre à jour par URL (admin) |
+| `/api/brands/[id]` | PATCH | Modifier une fiche (admin) |
+| `/api/brands/[id]` | DELETE | Supprimer une fiche (admin) |
 | `/api/scrape` | POST | Analyser une URL (admin) |
 | `/api/admin/session` | GET/POST/DELETE | Session admin |
 

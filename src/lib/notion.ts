@@ -330,6 +330,16 @@ export async function updateBrandInNotion(
   });
 }
 
+export async function deleteBrandInNotion(pageId: string): Promise<void> {
+  if (!notion) throw new Error("Notion non configuré");
+
+  await notion.request({
+    path: `pages/${pageId}`,
+    method: "patch",
+    body: { archived: true },
+  });
+}
+
 export async function createBrandInNotion(input: PublishBrandInput): Promise<string> {
   const dataSourceId = getNotionDataSourceId();
   if (!notion || !dataSourceId) {
