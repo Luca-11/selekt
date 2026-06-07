@@ -1,4 +1,5 @@
 import type { Brand } from "@/types/brand";
+import { formatUpdatedAt } from "@/lib/format-date";
 import { formatPriceShort } from "@/lib/price-tier";
 import { BrandImage } from "@/components/BrandImage";
 import { BrandSocialLinks } from "@/components/BrandSocialLinks";
@@ -10,6 +11,7 @@ interface BrandCardProps {
 
 export function BrandCard({ brand }: BrandCardProps) {
   const className = "brand-card";
+  const updatedLabel = formatUpdatedAt(brand.updatedAt);
 
   const main = (
     <>
@@ -25,6 +27,9 @@ export function BrandCard({ brand }: BrandCardProps) {
               </span>
             ))}
           </div>
+          {updatedLabel && (
+            <p className="brand-card__updated">Maj. {updatedLabel}</p>
+          )}
         </div>
         <div className="brand-card__aside">
           <ScoreRing score={brand.score} max={brand.maxScore} partial={brand.partial} />

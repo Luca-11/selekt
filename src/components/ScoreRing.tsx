@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { scoreColor } from "@/lib/score";
 
 interface ScoreRingProps {
@@ -40,7 +41,14 @@ export function ScoreRing({ score, max, partial }: ScoreRingProps) {
           {score}/{max}
         </text>
       </svg>
-      {partial && <span className="score-ring__partial">partiel</span>}
+      {partial && (
+        <span className="score-ring__partial" title="Fiche incomplète">
+          partiel
+        </span>
+      )}
+      <Link href="/a-propos#notes" className="score-ring__label">
+        Mon avis
+      </Link>
     </div>
   );
 }

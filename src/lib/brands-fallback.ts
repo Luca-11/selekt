@@ -64,8 +64,3 @@ export const fallbackBrands: Brand[] = [
   brand(28, "Coutumes", "https://coutumes.paris", "Bijoux", "France", "Premium", ["Artisanal", "Made in FR", "Masculin"], "Bijoux masculins, fabrication artisanale française.", { score: 4, color: "#e8ddd0", accent: "#8b6f47", textOnImg: "dark" }),
   brand(29, "Fragment Studio", "https://fragmentstudio.fr", "Bijoux", "France", "Premium", ["Artisanal", "Bijoux"]),
 ];
-
-export function buildCategories(brands: Brand[]): string[] {
-  const cats = new Set(brands.map((b) => b.category));
-  return ["Tout", ...Array.from(cats).sort()];
-}

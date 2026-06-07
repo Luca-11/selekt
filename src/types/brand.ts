@@ -23,6 +23,8 @@ export interface Brand {
   imageUrl?: string;
   logoUrl?: string;
   social?: BrandSocial;
+  /** ISO 8601 — dernière modification Notion */
+  updatedAt?: string;
 }
 
 export const NOTION_PROPERTIES = {

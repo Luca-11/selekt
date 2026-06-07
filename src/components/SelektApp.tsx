@@ -2,8 +2,18 @@
 
 import { useMemo, useState } from "react";
 import type { Brand } from "@/types/brand";
-import { buildCategories } from "@/lib/brands-fallback";
+import { AboutSection } from "@/components/AboutSection";
 import { BrandCard } from "@/components/BrandCard";
+import { FilterBar } from "@/components/FilterBar";
+import { PublicHeader } from "@/components/PublicHeader";
+import { SiteFooter } from "@/components/SiteFooter";
+import {
+  buildCategories,
+  buildCountries,
+  filterBrands,
+  sortBrands,
+  type SortOption,
+} from "@/lib/brand-filters";
 
 interface SelektAppProps {
   brands: Brand[];
@@ -12,69 +22,69 @@ interface SelektAppProps {
 
 export function SelektApp({ brands, source }: SelektAppProps) {
   const [activeFilter, setActiveFilter] = useState("Tout");
+  const [countryFilter, setCountryFilter] = useState("Tout");
+  const [sort, setSort] = useState<SortOption>("score-desc");
   const [search, setSearch] = useState("");
+
   const categories = useMemo(() => buildCategories(brands), [brands]);
+  const countries = useMemo(() => buildCountries(brands), [brands]);
 
-  const filtered = brands.filter((brand) => {
-    const matchCat =
-      activeFilter === "Tout" ||
-      brand.category === activeFilter ||
-      (activeFilter === "FR" && brand.origin.toUpperCase().includes("FR"));
-    const q = search.toLowerCase().trim();
-    const matchSearch =
-      !q ||
-      brand.name.toLowerCase().includes(q) ||
-      brand.desc.toLowerCase().includes(q) ||
-      brand.tags.some((t) => t.toLowerCase().includes(q));
-    return matchCat && matchSearch;
-  });
+  const filtered = useMemo(() => {
+    const matched = filterBrands(brands, {
+      category: activeFilter,
+      country: countryFilter,
+      search,
+    });
+    return sortBrands(matched, sort);
+  }, [brands, activeFilter, countryFilter, search, sort]);
 
-  const hasActiveFilters = activeFilter !== "Tout" || search.trim().length > 0;
+  const hasActiveFilters =
+    activeFilter !== "Tout" || countryFilter !== "Tout" || search.trim().length > 0;
 
   function resetFilters() {
     setActiveFilter("Tout");
+    setCountryFilter("Tout");
     setSearch("");
   }
 
+  const searchField = (
+    <label className="search">
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        className="search__icon"
+        aria-hidden="true"
+      >
+        <circle cx="11" cy="11" r="8" />
+        <path d="m21 21-4.35-4.35" />
+      </svg>
+      <input
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Chercher…"
+        aria-label="Rechercher une marque"
+      />
+      {search && (
+        <button
+          type="button"
+          className="search__clear"
+          onClick={() => setSearch("")}
+          aria-label="Effacer la recherche"
+        >
+          ×
+        </button>
+      )}
+    </label>
+  );
+
   return (
     <div className="app">
-      <header className="header">
-        <div className="header__inner">
-          <div className="logo">Selekt</div>
-          <label className="search">
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              className="search__icon"
-              aria-hidden="true"
-            >
-              <circle cx="11" cy="11" r="8" />
-              <path d="m21 21-4.35-4.35" />
-            </svg>
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Chercher une marque..."
-              aria-label="Rechercher une marque"
-            />
-            {search && (
-              <button
-                type="button"
-                className="search__clear"
-                onClick={() => setSearch("")}
-                aria-label="Effacer la recherche"
-              >
-                ×
-              </button>
-            )}
-          </label>
-        </div>
-      </header>
+      <PublicHeader showSearch search={searchField} />
 
       <main className="main">
         <div className="hero">
@@ -91,42 +101,23 @@ export function SelektApp({ brands, source }: SelektAppProps) {
           </p>
         </div>
 
-        <div className="filters" role="group" aria-label="Filtrer par catégorie">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              type="button"
-              className={`filter ${activeFilter === cat ? "filter--active" : ""}`}
-              onClick={() => setActiveFilter(cat)}
-              aria-pressed={activeFilter === cat}
-            >
-              {cat}
-            </button>
-          ))}
-          {!categories.includes("FR") && (
-            <button
-              type="button"
-              className={`filter ${activeFilter === "FR" ? "filter--active" : ""}`}
-              onClick={() => setActiveFilter("FR")}
-              aria-pressed={activeFilter === "FR"}
-            >
-              FR
-            </button>
-          )}
-        </div>
+        <AboutSection />
 
-        <p className="results-meta" aria-live="polite">
-          <span className="results-meta__count">
-            {filtered.length} marque{filtered.length !== 1 ? "s" : ""}
-          </span>
-          {hasActiveFilters && (
-            <button type="button" className="results-meta__reset" onClick={resetFilters}>
-              Réinitialiser
-            </button>
-          )}
-        </p>
+        <FilterBar
+          categories={categories}
+          countries={countries}
+          activeCategory={activeFilter}
+          activeCountry={countryFilter}
+          sort={sort}
+          resultCount={filtered.length}
+          hasActiveFilters={hasActiveFilters}
+          onCategoryChange={setActiveFilter}
+          onCountryChange={setCountryFilter}
+          onSortChange={setSort}
+          onReset={resetFilters}
+        />
 
-        <div className="cards" key={`${activeFilter}-${search.trim()}`}>
+        <div className="cards" key={`${activeFilter}-${countryFilter}-${search.trim()}-${sort}`}>
           {filtered.length === 0 ? (
             <div className="empty">
               <p className="empty__title">Aucune marque trouvée</p>
@@ -143,7 +134,7 @@ export function SelektApp({ brands, source }: SelektAppProps) {
         </div>
       </main>
 
-      <footer className="footer">selekt — curation indépendante</footer>
+      <SiteFooter />
     </div>
   );
 }

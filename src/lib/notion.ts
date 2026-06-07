@@ -151,6 +151,7 @@ function pageToBrand(page: PageObjectResponse): Brand {
       };
       return links.instagram || links.tiktok || links.twitter ? links : undefined;
     })(),
+    updatedAt: page.last_edited_time,
   };
 }
 
