@@ -143,10 +143,13 @@ input:focus-visible {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
   padding: 0;
   border: none;
   background: transparent;
   cursor: pointer;
+  min-width: 48px;
+  min-height: 26px;
 }
 
 .theme-toggle:focus-visible {
@@ -159,12 +162,9 @@ input:focus-visible {
 
 .theme-toggle__track {
   position: relative;
-  display: flex;
-  align-items: center;
   box-sizing: border-box;
   width: 48px;
   height: 26px;
-  padding: 0 3px;
   border: 1px solid var(--border-muted);
   border-radius: 999px;
   background: var(--surface-muted);
@@ -173,30 +173,31 @@ input:focus-visible {
     border-color var(--duration-normal) var(--ease-out);
 }
 
-.theme-toggle--dark .theme-toggle__track {
+[data-theme="dark"] .theme-toggle__track {
   background: rgba(255, 255, 255, 0.06);
   border-color: rgba(255, 255, 255, 0.14);
 }
 
 .theme-toggle__thumb {
-  position: relative;
+  position: absolute;
+  top: 50%;
+  left: 3px;
   display: grid;
   place-items: center;
-  flex-shrink: 0;
   width: 20px;
   height: 20px;
+  margin-top: -10px;
   border-radius: 50%;
   background: var(--surface);
   box-shadow: var(--shadow-sm);
-  transform: translateX(0);
   transition:
-    transform 0.42s var(--ease-out),
+    left 0.42s var(--ease-out),
     background var(--duration-normal) var(--ease-out),
     box-shadow var(--duration-normal) var(--ease-out);
 }
 
-.theme-toggle--dark .theme-toggle__thumb {
-  transform: translateX(22px);
+[data-theme="dark"] .theme-toggle__thumb {
+  left: calc(100% - 23px);
   background: var(--text);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
 }
@@ -217,7 +218,7 @@ input:focus-visible {
   transform: translate(-50%, -50%) rotate(0deg) scale(1);
 }
 
-.theme-toggle--dark .theme-toggle__icon--sun {
+[data-theme="dark"] .theme-toggle__icon--sun {
   opacity: 0;
   transform: translate(-50%, -50%) rotate(60deg) scale(0.4);
 }
@@ -225,12 +226,12 @@ input:focus-visible {
 .theme-toggle__icon--moon {
   color: var(--bg);
   opacity: 0;
-  transform: translate(-50%, -50%) rotate(-60deg) scale(0.4);
+  transform: translate(calc(-50% - 1px), -50%) rotate(-60deg) scale(0.4);
 }
 
-.theme-toggle--dark .theme-toggle__icon--moon {
+[data-theme="dark"] .theme-toggle__icon--moon {
   opacity: 1;
-  transform: translate(-50%, -50%) rotate(0deg) scale(1);
+  transform: translate(calc(-50% - 1px), -50%) rotate(0deg) scale(1);
 }
 
 .theme-toggle:hover .theme-toggle__track {
@@ -241,19 +242,6 @@ input:focus-visible {
   .theme-toggle__thumb,
   .theme-toggle__icon {
     transition: none;
-  }
-}
-
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation-duration: 0.38s;
-  animation-timing-function: var(--ease-out);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  ::view-transition-old(root),
-  ::view-transition-new(root) {
-    animation: none;
   }
 }
 

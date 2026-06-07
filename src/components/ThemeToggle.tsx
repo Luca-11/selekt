@@ -4,35 +4,13 @@ import { useEffect, useState } from "react";
 
 type Theme = "light" | "dark";
 
-function getInitialTheme(): Theme {
-  if (typeof window === "undefined") return "light";
-  const stored = window.localStorage.getItem("selekt-theme");
-  if (stored === "dark" || stored === "light") return stored;
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+function readTheme(): Theme {
+  if (typeof document === "undefined") return "light";
+  return document.documentElement.dataset.theme === "dark" ? "dark" : "light";
 }
 
 function applyTheme(theme: Theme) {
   document.documentElement.dataset.theme = theme;
-}
-
-function setThemeWithTransition(theme: Theme, onApplied: () => void) {
-  const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const doc = document as Document & {
-    startViewTransition?: (callback: () => void) => { finished: Promise<void> };
-  };
-
-  const commit = () => {
-    applyTheme(theme);
-    onApplied();
-    window.localStorage.setItem("selekt-theme", theme);
-  };
-
-  if (!prefersReducedMotion && typeof doc.startViewTransition === "function") {
-    doc.startViewTransition(commit);
-    return;
-  }
-
-  commit();
 }
 
 export function ThemeToggle() {
@@ -40,15 +18,15 @@ export function ThemeToggle() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const initial = getInitialTheme();
-    setTheme(initial);
-    applyTheme(initial);
+    setTheme(readTheme());
     setMounted(true);
   }, []);
 
   function toggle() {
-    const next: Theme = theme === "dark" ? "light" : "dark";
-    setThemeWithTransition(next, () => setTheme(next));
+    const next: Theme = readTheme() === "dark" ? "light" : "dark";
+    applyTheme(next);
+    setTheme(next);
+    window.localStorage.setItem("selekt-theme", next);
   }
 
   const isDark = mounted && theme === "dark";
@@ -56,7 +34,7 @@ export function ThemeToggle() {
   return (
     <button
       type="button"
-      className={`theme-toggle${isDark ? " theme-toggle--dark" : ""}`}
+      className="theme-toggle"
       onClick={toggle}
       aria-label={isDark ? "Passer en mode clair" : "Passer en mode sombre"}
       aria-pressed={isDark}
