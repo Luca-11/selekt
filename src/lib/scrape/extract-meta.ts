@@ -11,7 +11,7 @@ import {
   formatMetaContextForAi,
   isShopifyInternalSlug,
 } from "@/lib/scrape/structured-data";
-import { resolveAssetUrl, isUsableAssetUrl } from "@/lib/scrape/asset-url";
+import { resolveAssetUrl } from "@/lib/scrape/asset-url";
 import { extractSocialLinks } from "@/lib/scrape/extract-social";
 
 export type { MetaContext };
@@ -291,35 +291,6 @@ function guessActu(html: string, context: MetaContext): string | undefined {
 
   if (dropMatch?.[1]) {
     return dropMatch[1].replace(/\s+/g, " ").trim().slice(0, 120);
-  }
-
-  return undefined;
-}
-
-function pickImage(html: string, context: MetaContext, baseUrl: string): string | undefined {
-  const candidates: (string | undefined)[] = [
-    context.metas["og:image"],
-    matchMeta(html, "og:image", "property"),
-    context.metas["twitter:image"],
-    matchMeta(html, "twitter:image", "name"),
-  ];
-
-  for (const summary of context.jsonLdSummaries) {
-    const match = summary.match(/image:\s*(https?:\/\/\S+)/);
-    if (match?.[1]) candidates.push(match[1]);
-  }
-
-  const heroMatch = html.match(
-    /<img[^>]+(?:class=["'][^"']*(?:hero|banner|slide)[^"']*["']|data-hero)[^>]+src=["']([^"']+)["']/i,
-  );
-  if (heroMatch?.[1]) candidates.push(heroMatch[1]);
-
-  const productMatch = html.match(/"featured_image"\s*:\s*"([^"]+)"/i);
-  if (productMatch?.[1]) candidates.push(productMatch[1]);
-
-  for (const raw of candidates) {
-    const resolved = resolveAssetUrl(raw, baseUrl);
-    if (resolved && !/\.svg(\?|$)/i.test(resolved) && !resolved.includes("/logo")) return resolved;
   }
 
   return undefined;

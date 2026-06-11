@@ -8,7 +8,6 @@ import {
 } from "@/lib/scrape/extract-meta";
 import {
   fetchShopifyProductImages,
-  fetchShopifyProductPrices,
   isShopifySite,
   resolveProductPrices,
 } from "@/lib/scrape/extract-prices";

@@ -30,7 +30,7 @@ export function AboutContent({ compact = false }: { compact?: boolean }) {
       </div>
 
       <div className="about__block" id="notes">
-        <h2>Les notes (anneau coloré)</h2>
+        <h2>Les notes</h2>
         <p>
           Le score sur chaque carte, c&apos;est <strong>mon avis subjectif</strong>, pas une note
           « objective » ni un verdict sur la qualité réelle de la marque.
@@ -48,7 +48,7 @@ export function AboutContent({ compact = false }: { compact?: boolean }) {
           </li>
           <li>
             <span className="about__score-dot about__score-dot--high" aria-hidden="true" />
-            L&apos;anneau va du rouge au vert, sur une échelle de 0 à 5. Plus c&apos;est vert, plus
+            L&apos;échelle va du rouge au doré, sur 0 à 5. Plus la teinte est chaude et claire, plus
             je suis convaincu aujourd&apos;hui.
           </li>
         </ul>

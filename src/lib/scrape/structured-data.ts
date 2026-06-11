@@ -1,5 +1,4 @@
 import { extractPricesFromHtml } from "@/lib/scrape/extract-prices";
-import { isUsableAssetUrl } from "@/lib/scrape/asset-url";
 
 /** Données structurées extraites du HTML — alimente meta + prompt IA */
 export interface MetaContext {

@@ -29,31 +29,31 @@ export function buildCountries(brands: Brand[]): string[] {
   return Array.from(countries).sort((a, b) => a.localeCompare(b, "fr"));
 }
 
-export function filterBrands(
-  brands: Brand[],
-  options: {
-    category: string;
-    country: string;
-    search: string;
-  },
-): Brand[] {
+export type BrandFilterOptions = {
+  category: string;
+  country: string;
+  search: string;
+};
+
+function brandMatchesFilters(brand: Brand, options: BrandFilterOptions): boolean {
   const q = options.search.trim().toLowerCase();
+  const matchCat = options.category === "Tout" || brand.category === options.category;
+  const matchCountry =
+    options.country === "Tout" ||
+    brand.origin === options.country ||
+    (options.country === "FR" && brand.origin.toUpperCase().includes("FR"));
+  const matchSearch =
+    !q ||
+    brand.name.toLowerCase().includes(q) ||
+    brand.desc.toLowerCase().includes(q) ||
+    brand.origin.toLowerCase().includes(q) ||
+    brand.tags.some((t) => t.toLowerCase().includes(q));
 
-  return brands.filter((brand) => {
-    const matchCat = options.category === "Tout" || brand.category === options.category;
-    const matchCountry =
-      options.country === "Tout" ||
-      brand.origin === options.country ||
-      (options.country === "FR" && brand.origin.toUpperCase().includes("FR"));
-    const matchSearch =
-      !q ||
-      brand.name.toLowerCase().includes(q) ||
-      brand.desc.toLowerCase().includes(q) ||
-      brand.origin.toLowerCase().includes(q) ||
-      brand.tags.some((t) => t.toLowerCase().includes(q));
+  return matchCat && matchCountry && matchSearch;
+}
 
-    return matchCat && matchCountry && matchSearch;
-  });
+export function filterBrands(brands: Brand[], options: BrandFilterOptions): Brand[] {
+  return brands.filter((brand) => brandMatchesFilters(brand, options));
 }
 
 export function sortBrands(brands: Brand[], sort: SortOption): Brand[] {

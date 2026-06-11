@@ -1,4 +1,4 @@
-import { normalizePriceEur, tierFromPrices, type PriceTierValue } from "@/lib/price-tier";
+import { normalizePriceEur } from "@/lib/price-tier";
 
 export function extractPricesFromHtml(html: string): number[] {
   const prices = new Set<number>();
