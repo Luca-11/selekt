@@ -20,6 +20,9 @@ import {
   polarToCartesian,
   roundSvg,
   STEP_DEG,
+  WHEEL_IDLE_RESET_MS,
+  WHEEL_MIN_STEP_MS,
+  WHEEL_STEP_THRESHOLD,
   type DialMotion,
 } from "@/lib/arc-dial";
 import { arcPathForGeom, computeDialGeometry, type DialGeom } from "@/lib/dial-geometry";
@@ -112,7 +115,9 @@ export function BrandDial({
   const [activeIndex, setActiveIndex] = useState(0);
   const animDurationRef = useRef<number>(DIAL_DURATION.scroll);
   const dragRef = useRef({ start: 0, startIndex: 0 });
-  const wheelLock = useRef(false);
+  const wheelAccumulator = useRef(0);
+  const wheelLastStepAt = useRef(0);
+  const wheelIdleTimer = useRef<number | null>(null);
 
   const safeIndex = clampIndex(activeIndex, brands.length);
   const [animDuration, setAnimDuration] = useState<number>(DIAL_DURATION.scroll);
@@ -150,16 +155,40 @@ export function BrandDial({
 
     const onWheel = (event: WheelEvent) => {
       event.preventDefault();
-      if (wheelLock.current || Math.abs(event.deltaY) < 8) return;
-      wheelLock.current = true;
-      step(event.deltaY > 0 ? 1 : -1, "scroll");
-      window.setTimeout(() => {
-        wheelLock.current = false;
-      }, DIAL_DURATION.scroll * 0.85);
+      if (brands.length <= 1) return;
+
+      const now = Date.now();
+      if (now - wheelLastStepAt.current < WHEEL_MIN_STEP_MS) return;
+
+      let delta = event.deltaY;
+      if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) {
+        delta *= 16;
+      } else if (event.deltaMode === WheelEvent.DOM_DELTA_PAGE) {
+        delta *= window.innerHeight;
+      }
+      if (Math.abs(delta) < 2) return;
+
+      wheelAccumulator.current += delta;
+
+      if (wheelIdleTimer.current) window.clearTimeout(wheelIdleTimer.current);
+      wheelIdleTimer.current = window.setTimeout(() => {
+        wheelAccumulator.current = 0;
+        wheelIdleTimer.current = null;
+      }, WHEEL_IDLE_RESET_MS);
+
+      if (Math.abs(wheelAccumulator.current) < WHEEL_STEP_THRESHOLD) return;
+
+      const direction = wheelAccumulator.current > 0 ? 1 : -1;
+      step(direction, "scroll");
+      wheelAccumulator.current = 0;
+      wheelLastStepAt.current = now;
     };
 
     node.addEventListener("wheel", onWheel, { passive: false });
-    return () => node.removeEventListener("wheel", onWheel);
+    return () => {
+      node.removeEventListener("wheel", onWheel);
+      if (wheelIdleTimer.current) window.clearTimeout(wheelIdleTimer.current);
+    };
   }, [brands.length, immersive, step]);
 
   useEffect(() => {

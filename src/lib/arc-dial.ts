@@ -9,6 +9,15 @@ export const DIAL_DURATION = {
   keyboard: 180,
 } as const;
 
+/** Delta wheel cumulé (px) avant de passer à la marque suivante. */
+export const WHEEL_STEP_THRESHOLD = 340;
+
+/** Délai sans scroll avant de remettre l'accumulateur à zéro. */
+export const WHEEL_IDLE_RESET_MS = 300;
+
+/** Intervalle minimum entre deux pas — aligné sur l'animation scroll. */
+export const WHEEL_MIN_STEP_MS = 520;
+
 export type DialMotion = keyof typeof DIAL_DURATION;
 
 export function brandAngle(
