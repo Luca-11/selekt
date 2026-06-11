@@ -2,6 +2,7 @@ export interface BrandSocial {
   instagram?: string;
   tiktok?: string;
   twitter?: string;
+  youtube?: string;
 }
 
 export interface Brand {

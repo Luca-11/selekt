@@ -5,6 +5,11 @@ import type {
 } from "@notionhq/client/build/src/api-endpoints";
 import type { Brand } from "@/types/brand";
 import { NOTION_PROPERTIES } from "@/types/brand";
+import type { ExploreResource } from "@/types/resource";
+import {
+  ACCOUNT_NOTION_PROPERTIES,
+  RETAILER_NOTION_PROPERTIES,
+} from "@/types/resource";
 import type { PublishBrandInput } from "@/types/brand-draft";
 import { normalizePriceTier } from "@/lib/price-tier";
 import { paletteFromName } from "@/lib/palette";
@@ -15,20 +20,20 @@ const notion = process.env.NOTION_TOKEN
   ? new Client({ auth: process.env.NOTION_TOKEN, notionVersion: NOTION_API_VERSION })
   : null;
 
-/** Extrait l'ID depuis une URL Notion ou renvoie la valeur telle quelle. */
+type DataSourceQueryResponse = {
+  results: QueryDatabaseResponse["results"];
+  has_more: boolean;
+  next_cursor: string | null;
+};
+
 function normalizeNotionDatabaseId(raw: string): string {
   const trimmed = raw.trim();
-
-  if (!trimmed.startsWith("http")) {
-    return trimmed;
-  }
+  if (!trimmed.startsWith("http")) return trimmed;
 
   try {
     const segment = new URL(trimmed).pathname.split("/").filter(Boolean).pop() ?? "";
     const id = segment.split("?")[0];
-    if (/^[0-9a-f-]{32,36}$/i.test(id)) {
-      return id;
-    }
+    if (/^[0-9a-f-]{32,36}$/i.test(id)) return id;
   } catch {
     // valeur brute conservée
   }
@@ -36,10 +41,24 @@ function normalizeNotionDatabaseId(raw: string): string {
   return trimmed;
 }
 
-function getNotionDataSourceId(): string | undefined {
-  const raw = process.env.NOTION_DATABASE_ID;
-  if (!raw) return undefined;
-  return normalizeNotionDatabaseId(raw);
+function resolveDataSourceId(...keys: string[]): string | undefined {
+  for (const key of keys) {
+    const raw = process.env[key];
+    if (raw?.trim()) return normalizeNotionDatabaseId(raw);
+  }
+  return undefined;
+}
+
+function getBrandsDataSourceId(): string | undefined {
+  return resolveDataSourceId("NOTION_BRANDS_DATABASE_ID", "NOTION_DATABASE_ID");
+}
+
+function getRetailersDataSourceId(): string | undefined {
+  return resolveDataSourceId("NOTION_RETAILERS_DATABASE_ID");
+}
+
+function getAccountsDataSourceId(): string | undefined {
+  return resolveDataSourceId("NOTION_ACCOUNTS_DATABASE_ID");
 }
 
 function getTitle(page: PageObjectResponse, prop: string): string {
@@ -66,8 +85,19 @@ function getSelect(page: PageObjectResponse, prop: string): string {
   return property.select.name;
 }
 
+function getMultiSelect(page: PageObjectResponse, prop: string): string[] {
+  const property = page.properties[prop];
+  if (!property || property.type !== "multi_select") return [];
+  return property.multi_select.map((item) => item.name);
+}
+
 function getTextOrSelect(page: PageObjectResponse, prop: string): string {
   return getRichText(page, prop) || getSelect(page, prop);
+}
+
+function getOptionalUrl(page: PageObjectResponse, prop: string): string | undefined {
+  const value = getUrl(page, prop);
+  return value && value !== "#" ? value : undefined;
 }
 
 function parseNumberFromProperty(
@@ -114,6 +144,30 @@ function getActu(page: PageObjectResponse, prop: string): string | undefined {
   return undefined;
 }
 
+function joinDescription(...parts: string[]): string {
+  const unique = parts.map((p) => p.trim()).filter(Boolean);
+  return unique[0] || "À compléter";
+}
+
+function socialFromBrandPage(page: PageObjectResponse) {
+  const links = {
+    instagram: getOptionalUrl(page, NOTION_PROPERTIES.instagram),
+    tiktok: getOptionalUrl(page, NOTION_PROPERTIES.tiktok),
+    twitter: getOptionalUrl(page, NOTION_PROPERTIES.twitter),
+  };
+  return links.instagram || links.tiktok || links.twitter ? links : undefined;
+}
+
+function socialFromSingleUrl(url?: string) {
+  if (!url) return undefined;
+  const lower = url.toLowerCase();
+  if (lower.includes("instagram.com")) return { instagram: url };
+  if (lower.includes("youtube.com") || lower.includes("youtu.be")) return { youtube: url };
+  if (lower.includes("tiktok.com")) return { tiktok: url };
+  if (lower.includes("twitter.com") || lower.includes("x.com")) return { twitter: url };
+  return undefined;
+}
+
 function pageToBrand(page: PageObjectResponse): Brand {
   const name = getTitle(page, NOTION_PROPERTIES.name);
   const palette = paletteFromName(name);
@@ -126,7 +180,9 @@ function pageToBrand(page: PageObjectResponse): Brand {
     url: getUrl(page, NOTION_PROPERTIES.url),
     origin: getTextOrSelect(page, NOTION_PROPERTIES.origin),
     category: getTextOrSelect(page, NOTION_PROPERTIES.category) || "Indé",
-    price: normalizePriceTier(getSelect(page, NOTION_PROPERTIES.price) || getRichText(page, NOTION_PROPERTIES.price)),
+    price: normalizePriceTier(
+      getSelect(page, NOTION_PROPERTIES.price) || getRichText(page, NOTION_PROPERTIES.price),
+    ),
     score: parseNumberFromProperty(page, NOTION_PROPERTIES.score, 0),
     maxScore: parseNumberFromProperty(page, NOTION_PROPERTIES.maxScore, 5) || 5,
     partial: getPartialScore(page, NOTION_PROPERTIES.partial),
@@ -143,21 +199,49 @@ function pageToBrand(page: PageObjectResponse): Brand {
     actu: getActu(page, NOTION_PROPERTIES.actu),
     imageUrl: getOptionalUrl(page, NOTION_PROPERTIES.image),
     logoUrl: getOptionalUrl(page, NOTION_PROPERTIES.logo),
-    social: (() => {
-      const links = {
-        instagram: getOptionalUrl(page, NOTION_PROPERTIES.instagram),
-        tiktok: getOptionalUrl(page, NOTION_PROPERTIES.tiktok),
-        twitter: getOptionalUrl(page, NOTION_PROPERTIES.twitter),
-      };
-      return links.instagram || links.tiktok || links.twitter ? links : undefined;
-    })(),
+    social: socialFromBrandPage(page),
     updatedAt: page.last_edited_time,
   };
 }
 
-function getOptionalUrl(page: PageObjectResponse, prop: string): string | undefined {
-  const value = getUrl(page, prop);
-  return value && value !== "#" ? value : undefined;
+function pageToRetailer(page: PageObjectResponse): ExploreResource {
+  const P = RETAILER_NOTION_PROPERTIES;
+  const origin = getSelect(page, P.origin);
+  const brandType = getSelect(page, P.brandTypes);
+
+  return {
+    id: page.id,
+    kind: "retailer",
+    name: getTitle(page, P.name),
+    url: getUrl(page, P.url),
+    desc: joinDescription(getRichText(page, P.description), getRichText(page, P.why)),
+    category: getSelect(page, P.category) || "Multi-marques",
+    tags: brandType ? [brandType] : [],
+    origin: origin && origin !== "–" ? origin : undefined,
+    imageUrl: getOptionalUrl(page, P.image),
+    updatedAt: page.last_edited_time,
+  };
+}
+
+function pageToAccount(page: PageObjectResponse): ExploreResource {
+  const P = ACCOUNT_NOTION_PROPERTIES;
+  const primaryUrl = getOptionalUrl(page, P.url);
+  const socialUrl = getOptionalUrl(page, P.social);
+  const contentType = getSelect(page, P.contentType);
+
+  return {
+    id: page.id,
+    kind: "account",
+    name: getTitle(page, P.name),
+    url: primaryUrl || socialUrl || "#",
+    desc: joinDescription(getRichText(page, P.description), getRichText(page, P.why)),
+    category: getSelect(page, P.category) || "Mode",
+    contentType: contentType || undefined,
+    tags: getMultiSelect(page, P.tags),
+    imageUrl: getOptionalUrl(page, P.image),
+    social: socialFromSingleUrl(socialUrl),
+    updatedAt: page.last_edited_time,
+  };
 }
 
 function isFullPage(
@@ -166,23 +250,13 @@ function isFullPage(
   return "properties" in result;
 }
 
-type DataSourceQueryResponse = {
-  results: QueryDatabaseResponse["results"];
-  has_more: boolean;
-  next_cursor: string | null;
-};
+async function queryDataSource(
+  dataSourceId: string,
+  sortProperty: string,
+): Promise<PageObjectResponse[]> {
+  if (!notion) throw new Error("Notion non configuré");
 
-export function isNotionConfigured(): boolean {
-  return Boolean(notion && getNotionDataSourceId());
-}
-
-export async function fetchBrandsFromNotion(): Promise<Brand[]> {
-  const dataSourceId = getNotionDataSourceId();
-  if (!notion || !dataSourceId) {
-    throw new Error("Notion non configuré");
-  }
-
-  const brands: Brand[] = [];
+  const pages: PageObjectResponse[] = [];
   let cursor: string | undefined;
 
   do {
@@ -191,19 +265,56 @@ export async function fetchBrandsFromNotion(): Promise<Brand[]> {
       method: "post",
       body: {
         start_cursor: cursor,
-        sorts: [{ property: NOTION_PROPERTIES.name, direction: "ascending" }],
+        sorts: [{ property: sortProperty, direction: "ascending" }],
       },
     })) as DataSourceQueryResponse;
 
     for (const result of response.results) {
-      if (isFullPage(result)) {
-        brands.push(pageToBrand(result));
-      }
+      if (isFullPage(result)) pages.push(result);
     }
 
     cursor = response.has_more ? response.next_cursor ?? undefined : undefined;
   } while (cursor);
 
+  return pages;
+}
+
+export function isNotionConfigured(): boolean {
+  return Boolean(notion && getBrandsDataSourceId());
+}
+
+export interface NotionResourceBundle {
+  brands: Brand[];
+  retailers: ExploreResource[];
+  accounts: ExploreResource[];
+}
+
+export async function fetchAllResourcesFromNotion(): Promise<NotionResourceBundle> {
+  const brandsId = getBrandsDataSourceId();
+  if (!notion || !brandsId) throw new Error("Notion non configuré");
+
+  const retailersId = getRetailersDataSourceId();
+  const accountsId = getAccountsDataSourceId();
+
+  const [brandPages, retailerPages, accountPages] = await Promise.all([
+    queryDataSource(brandsId, NOTION_PROPERTIES.name),
+    retailersId
+      ? queryDataSource(retailersId, RETAILER_NOTION_PROPERTIES.name)
+      : Promise.resolve([]),
+    accountsId
+      ? queryDataSource(accountsId, ACCOUNT_NOTION_PROPERTIES.name)
+      : Promise.resolve([]),
+  ]);
+
+  return {
+    brands: brandPages.map(pageToBrand),
+    retailers: retailerPages.map(pageToRetailer),
+    accounts: accountPages.map(pageToAccount),
+  };
+}
+
+export async function fetchBrandsFromNotion(): Promise<Brand[]> {
+  const { brands } = await fetchAllResourcesFromNotion();
   return brands;
 }
 
@@ -221,10 +332,6 @@ function sanitizeSelectOption(value: string): string {
 
 function selectProp(value: string, maxLength = 100) {
   return { select: { name: sanitizeSelectOption(value).slice(0, maxLength) } };
-}
-
-function mapPriceToNotion(price: string): string {
-  return normalizePriceTier(price);
 }
 
 function normalizeUrlForCompare(url: string): string {
@@ -252,36 +359,21 @@ function buildNotionProperties(input: PublishBrandInput) {
     [NOTION_PROPERTIES.url]: { url: input.url },
     [NOTION_PROPERTIES.origin]: richTextProp(input.origin),
     [NOTION_PROPERTIES.category]: richTextProp(input.category),
-    [NOTION_PROPERTIES.price]: selectProp(mapPriceToNotion(input.price)),
+    [NOTION_PROPERTIES.price]: selectProp(normalizePriceTier(input.price)),
     [NOTION_PROPERTIES.score]: richTextProp(String(input.score)),
     [NOTION_PROPERTIES.maxScore]: richTextProp(String(input.maxScore)),
     [NOTION_PROPERTIES.partial]: selectProp(input.partial ? "Oui" : "Non"),
     [NOTION_PROPERTIES.description]: selectProp(input.desc || "À compléter", 2000),
   };
 
-  if (input.actu?.trim()) {
-    properties[NOTION_PROPERTIES.actu] = richTextProp(input.actu);
-  }
-
-  if (input.imageUrl?.trim()) {
-    properties[NOTION_PROPERTIES.image] = urlProp(input.imageUrl);
-  }
-
-  if (input.logoUrl?.trim()) {
-    properties[NOTION_PROPERTIES.logo] = urlProp(input.logoUrl);
-  }
-
+  if (input.actu?.trim()) properties[NOTION_PROPERTIES.actu] = richTextProp(input.actu);
+  if (input.imageUrl?.trim()) properties[NOTION_PROPERTIES.image] = urlProp(input.imageUrl);
+  if (input.logoUrl?.trim()) properties[NOTION_PROPERTIES.logo] = urlProp(input.logoUrl);
   if (input.social?.instagram?.trim()) {
     properties[NOTION_PROPERTIES.instagram] = urlProp(input.social.instagram);
   }
-
-  if (input.social?.tiktok?.trim()) {
-    properties[NOTION_PROPERTIES.tiktok] = urlProp(input.social.tiktok);
-  }
-
-  if (input.social?.twitter?.trim()) {
-    properties[NOTION_PROPERTIES.twitter] = urlProp(input.social.twitter);
-  }
+  if (input.social?.tiktok?.trim()) properties[NOTION_PROPERTIES.tiktok] = urlProp(input.social.tiktok);
+  if (input.social?.twitter?.trim()) properties[NOTION_PROPERTIES.twitter] = urlProp(input.social.twitter);
 
   if (badge1) properties[NOTION_PROPERTIES.badge1] = selectProp(badge1);
   if (badge2) properties[NOTION_PROPERTIES.badge2] = richTextProp(badge2);
@@ -291,12 +383,12 @@ function buildNotionProperties(input: PublishBrandInput) {
 }
 
 async function findPageIdByUrl(targetUrl: string): Promise<string | undefined> {
-  const dataSourceId = getNotionDataSourceId();
+  const dataSourceId = getBrandsDataSourceId();
   if (!notion || !dataSourceId) return undefined;
 
   const normalizedTarget = normalizeUrlForCompare(targetUrl);
-
   let cursor: string | undefined;
+
   do {
     const response = (await notion.request({
       path: `data_sources/${dataSourceId}/query`,
@@ -342,10 +434,8 @@ export async function deleteBrandInNotion(pageId: string): Promise<void> {
 }
 
 export async function createBrandInNotion(input: PublishBrandInput): Promise<string> {
-  const dataSourceId = getNotionDataSourceId();
-  if (!notion || !dataSourceId) {
-    throw new Error("Notion non configuré");
-  }
+  const dataSourceId = getBrandsDataSourceId();
+  if (!notion || !dataSourceId) throw new Error("Notion non configuré");
 
   const page = (await notion.request({
     path: "pages",
@@ -359,7 +449,6 @@ export async function createBrandInNotion(input: PublishBrandInput): Promise<str
   return page.id;
 }
 
-/** Crée ou met à jour si l'URL existe déjà — pratique pour backfill image / réseaux */
 export async function upsertBrandInNotion(
   input: PublishBrandInput,
 ): Promise<{ id: string; created: boolean }> {

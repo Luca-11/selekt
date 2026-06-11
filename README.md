@@ -13,9 +13,15 @@ Ouvre [http://localhost:3000](http://localhost:3000). Sans Notion configuré, le
 
 ## Brancher Notion
 
-### 1. Colonnes requises
+Selekt utilise **3 bases Notion séparées** (3 data sources) :
 
-Crée ou adapte ta base Notion avec ces colonnes **(noms exacts)** :
+| Base | Route site |
+|------|------------|
+| **MARQUES** | `/` |
+| **REVENDEURS** | `/revendeurs` |
+| **MEDIAS** | `/a-suivre` |
+
+### 1. Colonnes — MARQUES
 
 | Colonne | Type Notion |
 |---------|-------------|
@@ -30,21 +36,45 @@ Crée ou adapte ta base Notion avec ces colonnes **(noms exacts)** :
 | **Description courte** | Texte ou Sélection |
 | **Badge 1**, **Badge 2**, **Badge 3** | Sélection ou Texte |
 | **Actu / Dernier drop** | Texte |
-| **Couleur**, **Accent** | Texte *(optionnel — palette auto sinon)* |
-| **Image** | URL *(hero sur les cartes)* |
-| **Logo** | URL |
+| **Couleur**, **Accent** | Texte *(optionnel)* |
+| **Image**, **Logo** | URL |
 | **Instagram**, **TikTok**, **X / Twitter** | URL |
 
-> Les anciennes valeurs `€`, `€€`, `€€€` restent lues correctement, mais les nouvelles fiches utilisent les libellés texte.
+### 2. Colonnes — REVENDEURS
 
-### 2. Intégration Notion
+| Colonne | Type Notion |
+|---------|-------------|
+| **Name** | Titre |
+| **URL** | URL |
+| **Pays** | Sélection |
+| **Positionnement** | Sélection |
+| **Description** | Texte |
+| **Pourquoi** | Texte |
+| **Type de marques** | Sélection |
+| **Image** | URL |
+
+### 3. Colonnes — MEDIAS
+
+| Colonne | Type Notion |
+|---------|-------------|
+| **Name** | Titre |
+| **URL principale** | URL |
+| **Expertise** | Sélection |
+| **Type de contenu** | Sélection |
+| **Description** | Texte |
+| **Pourquoi** | Texte |
+| **Tags** | Multi-sélection |
+| **Réseaux sociaux** | URL |
+| **Image** | URL |
+
+### 4. Intégration Notion
 
 1. [notion.so/my-integrations](https://www.notion.so/my-integrations) → **Nouvelle intégration**
 2. Copie le **Internal Integration Secret**
-3. Sur ta base : `···` → **Connexions** → ajoute l'intégration
-4. Copie l'**ID de la source de données** depuis l'URL Notion
+3. Sur chaque base : `···` → **Connexions** → ajoute l'intégration
+4. Copie l'**ID de chaque source de données** depuis l'URL Notion
 
-### 3. Variables d'environnement
+### 5. Variables d'environnement
 
 ```bash
 cp .env.example .env.local
@@ -52,9 +82,13 @@ cp .env.example .env.local
 
 ```env
 NOTION_TOKEN=secret_...
-NOTION_DATABASE_ID=...
+NOTION_BRANDS_DATABASE_ID=...
+NOTION_RETAILERS_DATABASE_ID=...
+NOTION_ACCOUNTS_DATABASE_ID=...
 ADMIN_PASSWORD=ton-mot-de-passe
 ```
+
+> `NOTION_DATABASE_ID` reste accepté comme alias de `NOTION_BRANDS_DATABASE_ID`.
 
 Optionnel (IA) :
 
@@ -87,7 +121,9 @@ Si quota dépassé (429), un message clair s'affiche dans l'admin — le brouill
 2. [vercel.com/new](https://vercel.com/new) → importe le projet
 3. Ajoute les variables d'environnement :
    - `NOTION_TOKEN`
-   - `NOTION_DATABASE_ID`
+   - `NOTION_BRANDS_DATABASE_ID`
+   - `NOTION_RETAILERS_DATABASE_ID`
+   - `NOTION_ACCOUNTS_DATABASE_ID`
    - `ADMIN_PASSWORD`
    - `OPENAI_API_KEY` *(optionnel)*
    - `AI_PROVIDER=openai` *(optionnel)*
@@ -106,6 +142,17 @@ Le site rebuild automatiquement. L'admin est protégé par mot de passe cookie �
 | `/api/scrape` | POST | Analyser une URL (admin) |
 | `/api/admin/session` | GET/POST/DELETE | Session admin |
 
+## Sections publiques
+
+| Route | Contenu |
+|-------|---------|
+| `/` | Marques indépendantes |
+| `/revendeurs` | Enseignes de confiance (BSTN, Size?, etc.) |
+| `/a-suivre` | Médias et créateurs à suivre |
+| `/a-propos` | Le projet |
+
+Sans Notion, des données locales de démo sont utilisées pour chaque section.
+
 ## Structure
 
 ```
@@ -115,4 +162,5 @@ src/
   lib/scrape/    # Fetch + meta
   lib/ai/        # Enrichissement Claude/OpenAI
   lib/notion.ts  # Lecture + écriture Notion
+  types/resource.ts  # Revendeurs & médias
 ```
