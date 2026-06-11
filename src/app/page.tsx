@@ -1,5 +1,5 @@
 import { SelektApp } from "@/components/SelektApp";
-import { getBrands } from "@/lib/get-brands";
+import { getBrands } from "@/lib/get-resources";
 
 export const revalidate = 300;
 

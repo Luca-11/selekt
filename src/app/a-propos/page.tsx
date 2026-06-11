@@ -1,5 +1,5 @@
 import { AboutContent } from "@/components/AboutContent";
-import { PublicHeader } from "@/components/PublicHeader";
+import { AppChrome } from "@/components/AppChrome";
 import { SiteFooter } from "@/components/SiteFooter";
 
 export const metadata = {
@@ -9,9 +9,9 @@ export const metadata = {
 
 export default function AboutPage() {
   return (
-    <div className="app">
-      <PublicHeader />
-      <main className="main main--about">
+    <div className="app app--browse">
+      <AppChrome variant="browse" />
+      <main className="main main--about main--browse">
         <AboutContent />
       </main>
       <SiteFooter variant="about" />

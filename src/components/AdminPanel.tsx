@@ -405,7 +405,7 @@ export function AdminPanel() {
             <div className="admin__card">
               <p className="admin__hub-empty">
                 Notion non branché — connecte <code>NOTION_TOKEN</code> et{" "}
-                <code>NOTION_DATABASE_ID</code> pour gérer les fiches.
+                <code>NOTION_BRANDS_DATABASE_ID</code> pour gérer les marques.
               </p>
             </div>
           ) : (

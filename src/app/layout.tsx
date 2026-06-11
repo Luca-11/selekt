@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { DM_Mono, DM_Sans, Lora, Playfair_Display } from "next/font/google";
+import { PageTransitionProvider } from "@/components/PageTransitionProvider";
 import "./globals.css";
 
 const playfair = Playfair_Display({
@@ -58,7 +59,9 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body suppressHydrationWarning>{children}</body>
+      <body suppressHydrationWarning>
+        <PageTransitionProvider>{children}</PageTransitionProvider>
+      </body>
     </html>
   );
 }

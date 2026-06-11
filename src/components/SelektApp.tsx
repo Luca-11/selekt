@@ -1,12 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Brand } from "@/types/brand";
-import { AboutSection } from "@/components/AboutSection";
-import { BrandCard } from "@/components/BrandCard";
-import { FilterBar } from "@/components/FilterBar";
-import { PublicHeader } from "@/components/PublicHeader";
-import { SiteFooter } from "@/components/SiteFooter";
+import { AppChrome } from "@/components/AppChrome";
+import { BrandDial } from "@/components/BrandDial";
+import { DialFilterSheet } from "@/components/DialFilterSheet";
 import {
   buildCategories,
   buildCountries,
@@ -20,11 +18,12 @@ interface SelektAppProps {
   source: "notion" | "fallback";
 }
 
-export function SelektApp({ brands, source }: SelektAppProps) {
+export function SelektApp({ brands }: SelektAppProps) {
   const [activeFilter, setActiveFilter] = useState("Tout");
   const [countryFilter, setCountryFilter] = useState("Tout");
   const [sort, setSort] = useState<SortOption>("score-desc");
   const [search, setSearch] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const categories = useMemo(() => buildCategories(brands), [brands]);
   const countries = useMemo(() => buildCountries(brands), [brands]);
@@ -41,100 +40,72 @@ export function SelektApp({ brands, source }: SelektAppProps) {
   const hasActiveFilters =
     activeFilter !== "Tout" || countryFilter !== "Tout" || search.trim().length > 0;
 
+  const filterKey = `${activeFilter}-${countryFilter}-${search.trim()}-${sort}`;
+
   function resetFilters() {
     setActiveFilter("Tout");
     setCountryFilter("Tout");
     setSearch("");
   }
 
-  const searchField = (
-    <label className="search">
-      <svg
-        width="14"
-        height="14"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        className="search__icon"
-        aria-hidden="true"
-      >
-        <circle cx="11" cy="11" r="8" />
-        <path d="m21 21-4.35-4.35" />
-      </svg>
-      <input
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="Chercher…"
-        aria-label="Rechercher une marque"
-      />
-      {search && (
-        <button
-          type="button"
-          className="search__clear"
-          onClick={() => setSearch("")}
-          aria-label="Effacer la recherche"
-        >
-          ×
-        </button>
-      )}
-    </label>
-  );
+  useEffect(() => {
+    document.documentElement.classList.add("immersive-dial");
+    return () => document.documentElement.classList.remove("immersive-dial");
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.toggleAttribute("data-filter-sheet-open", filtersOpen);
+    return () => document.documentElement.removeAttribute("data-filter-sheet-open");
+  }, [filtersOpen]);
 
   return (
-    <div className="app">
-      <PublicHeader showSearch search={searchField} />
+    <div className="app app--immersive">
+      <AppChrome
+        variant="immersive"
+        libraryCount={brands.length}
+        filtersActive={hasActiveFilters}
+        onOpenFilters={() => setFiltersOpen(true)}
+      />
 
-      <main className="main">
-        <div className="hero">
-          <h1>
-            Des marques qui méritent
-            <br />
-            votre attention.
-          </h1>
-          <p>
-            Une curation personnelle — {brands.length} marques, aucune fast fashion.
-            {source === "fallback" && (
-              <span className="hero__hint"> · Données locales (Notion non branché)</span>
-            )}
-          </p>
-        </div>
+      <DialFilterSheet
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        categories={categories}
+        countries={countries}
+        activeCategory={activeFilter}
+        activeCountry={countryFilter}
+        sort={sort}
+        search={search}
+        resultCount={filtered.length}
+        libraryCount={brands.length}
+        hasActiveFilters={hasActiveFilters}
+        onCategoryChange={setActiveFilter}
+        onCountryChange={setCountryFilter}
+        onSortChange={setSort}
+        onSearchChange={setSearch}
+        onReset={resetFilters}
+      />
 
-        <AboutSection />
-
-        <FilterBar
-          categories={categories}
-          countries={countries}
-          activeCategory={activeFilter}
-          activeCountry={countryFilter}
-          sort={sort}
-          resultCount={filtered.length}
-          hasActiveFilters={hasActiveFilters}
-          onCategoryChange={setActiveFilter}
-          onCountryChange={setCountryFilter}
-          onSortChange={setSort}
-          onReset={resetFilters}
-        />
-
-        <div className="cards" key={`${activeFilter}-${countryFilter}-${search.trim()}-${sort}`}>
-          {filtered.length === 0 ? (
-            <div className="empty">
-              <p className="empty__title">Aucune marque trouvée</p>
-              <p className="empty__hint">Essaie un autre filtre ou un mot-clé différent.</p>
-              {hasActiveFilters && (
-                <button type="button" className="empty__action" onClick={resetFilters}>
-                  Voir toutes les marques
-                </button>
-              )}
-            </div>
-          ) : (
-            filtered.map((brand) => <BrandCard key={brand.id} brand={brand} />)
+      {filtered.length === 0 ? (
+        <div className="dial-empty-state">
+          <p className="empty__title">Aucune marque trouvée</p>
+          <p className="empty__hint">Essaie un autre filtre ou un mot-clé différent.</p>
+          {hasActiveFilters && (
+            <button type="button" className="empty__action" onClick={resetFilters}>
+              Réinitialiser
+            </button>
           )}
         </div>
-      </main>
-
-      <SiteFooter />
+      ) : (
+        <BrandDial
+          key={filterKey}
+          brands={filtered}
+          libraryTotal={brands.length}
+          filteredTotal={filtered.length}
+          hasActiveFilters={hasActiveFilters}
+          immersive
+        />
+      )}
     </div>
   );
 }
