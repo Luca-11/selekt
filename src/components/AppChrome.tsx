@@ -49,7 +49,7 @@ export function AppChrome({
 
   return (
     <header className={`app-chrome app-chrome--${variant}`}>
-      <div className="app-chrome__start">
+      <div className="app-chrome__main">
         <TransitionLink
           href="/"
           className="app-chrome__brand"

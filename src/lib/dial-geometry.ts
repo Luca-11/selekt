@@ -19,6 +19,28 @@ export function computeDialGeometry(
   narrow: boolean,
 ): DialGeom {
   if (width <= 0 || height <= 0) {
+    if (narrow) {
+      const viewW = 390;
+      const viewH = 100;
+      const radius = viewW * 0.36;
+      const cx = viewW / 2;
+      const hubY = viewH * 0.45;
+      const cy = hubY + radius;
+
+      return {
+        cx,
+        cy,
+        radius,
+        needleAngle: -90,
+        viewW,
+        viewH,
+        notchR: 2.5,
+        tickLen: 8,
+        needleTipInset: 5,
+        needleBaseInset: 24,
+      };
+    }
+
     return {
       cx: 28,
       cy: 200,
@@ -34,19 +56,24 @@ export function computeDialGeometry(
   }
 
   if (narrow) {
-    const viewH = Math.max(height * 0.32, 200);
-    const radius = Math.min(width * 0.46, viewH * 1.55);
+    const viewW = width;
+    const viewH = height;
+    const radius = viewW * 0.36;
+    const cx = viewW / 2;
+    const hubY = viewH * 0.45;
+    const cy = hubY + radius;
+
     return {
-      cx: width / 2,
-      cy: viewH - 20,
+      cx,
+      cy,
       radius,
       needleAngle: -90,
-      viewW: width,
+      viewW,
       viewH,
-      notchR: 4,
-      tickLen: 16,
-      needleTipInset: 10,
-      needleBaseInset: 52,
+      notchR: 2.5,
+      tickLen: 8,
+      needleTipInset: 5,
+      needleBaseInset: 24,
     };
   }
 
@@ -69,9 +96,10 @@ export function computeDialGeometry(
 /** Point d'ancrage de l'indicateur de navigation, dans les coords du viewBox. */
 export function navHintAnchor(geom: DialGeom, narrow: boolean): { x: number; y: number } {
   if (narrow) {
+    const hubY = geom.cy + geom.radius * Math.sin((geom.needleAngle * Math.PI) / 180);
     return {
       x: geom.cx,
-      y: geom.cy - geom.radius * 0.48,
+      y: Math.max(geom.tickLen * 2, hubY - geom.tickLen * 1.2),
     };
   }
 

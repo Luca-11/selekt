@@ -4,9 +4,11 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import type { CSSProperties } from "react";
 import type { Brand } from "@/types/brand";
@@ -41,18 +43,28 @@ interface BrandDialProps {
   hasActiveFilters?: boolean;
 }
 
+const NARROW_MEDIA_QUERY = "(max-width: 768px)";
+
+function subscribeNarrowDial(callback: () => void): () => void {
+  const mq = window.matchMedia(NARROW_MEDIA_QUERY);
+  mq.addEventListener("change", callback);
+  return () => mq.removeEventListener("change", callback);
+}
+
+function getNarrowDialSnapshot(): boolean {
+  return window.matchMedia(NARROW_MEDIA_QUERY).matches;
+}
+
+function getNarrowDialServerSnapshot(): boolean {
+  return false;
+}
+
 function useNarrowDial(): boolean {
-  const [narrow, setNarrow] = useState(false);
-
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 768px)");
-    const update = () => setNarrow(mq.matches);
-    update();
-    mq.addEventListener("change", update);
-    return () => mq.removeEventListener("change", update);
-  }, []);
-
-  return narrow;
+  return useSyncExternalStore(
+    subscribeNarrowDial,
+    getNarrowDialSnapshot,
+    getNarrowDialServerSnapshot,
+  );
 }
 
 function useDialGeometry(
@@ -61,17 +73,23 @@ function useDialGeometry(
 ): { geom: DialGeom; ready: boolean } {
   const lastSizeRef = useRef({ width: 0, height: 0 });
   const [state, setState] = useState<{ geom: DialGeom; ready: boolean }>(() => ({
-    geom: computeDialGeometry(1, 1, narrow),
+    geom: computeDialGeometry(0, 0, false),
     ready: false,
   }));
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    lastSizeRef.current = { width: 0, height: 0 };
+    setState({
+      geom: computeDialGeometry(0, 0, narrow),
+      ready: false,
+    });
+
     const node = containerRef.current;
     if (!node) return;
 
     const measure = () => {
       const rect = node.getBoundingClientRect();
-      if (rect.width < 8 || rect.height < 8) return;
+      if (rect.width < 8 || rect.height < 4) return;
 
       const { width: lastW, height: lastH } = lastSizeRef.current;
       const widthChanged = Math.abs(rect.width - lastW) > 1;
@@ -183,7 +201,7 @@ export function BrandDial({
   );
 
   useEffect(() => {
-    const node = immersive ? layoutRef.current : dialRef.current;
+    const node = immersive && !narrow ? layoutRef.current : dialRef.current;
     if (!node || brands.length === 0) return;
 
     const onWheel = (event: WheelEvent) => {
@@ -233,7 +251,7 @@ export function BrandDial({
       node.removeEventListener("wheel", onWheel);
       if (wheelIdleTimer.current) window.clearTimeout(wheelIdleTimer.current);
     };
-  }, [brands.length, immersive, step]);
+  }, [brands.length, immersive, narrow, step]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -279,7 +297,9 @@ export function BrandDial({
 
     const current = narrow ? event.clientX : event.clientY;
     const delta = current - dragRef.current.start;
-    const pxPerStep = narrow ? 40 : Math.max(48, geom.radius * 0.08);
+    const pxPerStep = narrow
+      ? Math.max(28, geom.radius * 0.06)
+      : Math.max(48, geom.radius * 0.08);
     const offset = Math.round(-delta / pxPerStep);
     const next = clampIndex(dragRef.current.startIndex + offset, brands.length);
 
@@ -294,8 +314,9 @@ export function BrandDial({
     }
   };
 
-  const innerRadius = geom.radius - 14;
-  const outerRadius = geom.radius + 10;
+  const trackInset = narrow ? 10 : 14;
+  const innerRadius = geom.radius - trackInset;
+  const outerRadius = geom.radius + (narrow ? 8 : 10);
   const hub = polarToCartesian(geom.cx, geom.cy, geom.radius, geom.needleAngle);
   const needleTip = polarToCartesian(
     geom.cx,
@@ -336,7 +357,7 @@ export function BrandDial({
     <section ref={layoutRef} className={layoutClass} aria-labelledby={labelId}>
       <div
         ref={dialRef}
-        className="brand-dial"
+        className={`brand-dial${narrow ? " brand-dial--horizontal" : ""}`}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -362,79 +383,79 @@ export function BrandDial({
           />
 
           <svg
-          className="brand-dial__svg"
-          viewBox={`0 0 ${geom.viewW} ${geom.viewH}`}
-          preserveAspectRatio="xMidYMid meet"
-          aria-hidden="true"
-          opacity={geomReady ? 1 : 0}
-        >
-          <path
-            d={arcPathForGeom(geom, GHOST_SPAN_DEG, outerRadius)}
-            className="brand-dial__track brand-dial__track--ghost"
-            fill="none"
-          />
-          <path
-            d={arcPathForGeom(geom, GHOST_SPAN_DEG, innerRadius)}
-            className="brand-dial__track brand-dial__track--inner"
-            fill="none"
-          />
-          <path
-            d={arcPathForGeom(geom, ARC_SPAN_DEG)}
-            className="brand-dial__track brand-dial__track--main"
-            fill="none"
-          />
-
-          <g
-            className="brand-dial__ring"
-            transform={`rotate(${-rotationIndex * STEP_DEG} ${geom.cx} ${geom.cy})`}
+            className="brand-dial__svg"
+            viewBox={`0 0 ${geom.viewW} ${geom.viewH}`}
+            preserveAspectRatio={narrow ? "xMidYMax meet" : "xMidYMid meet"}
+            aria-hidden="true"
+            opacity={geomReady ? 1 : 0}
           >
-            {brands.map((brand, index) => {
-              const displayAngle = notchAngle(index, rotationIndex, geom.needleAngle);
-              if (!isNotchVisible(displayAngle, geom.needleAngle)) return null;
-
-              const zone = notchZone(displayAngle, geom.needleAngle);
-              const pos = polarToCartesian(
-                geom.cx,
-                geom.cy,
-                geom.radius,
-                geom.needleAngle + index * STEP_DEG,
-              );
-              const dist = Math.abs(displayAngle - geom.needleAngle);
-              const fade =
-                zone === "ghost"
-                  ? Math.max(0.1, 0.35 - dist / GHOST_SPAN_DEG)
-                  : Math.max(0.3, 1 - dist / (ARC_SPAN_DEG / 2 + STEP_DEG));
-              const tickLen = zone === "ghost" ? geom.tickLen * 0.65 : geom.tickLen;
-              const tickX = roundSvg(((geom.cx - pos.x) / geom.radius) * tickLen);
-              const tickY = roundSvg(((geom.cy - pos.y) / geom.radius) * tickLen);
-              const dotR = zone === "ghost" ? geom.notchR * 0.7 : geom.notchR;
-
-              return (
-                <g
-                  key={brand.id}
-                  className={`brand-dial__notch${zone === "ghost" ? " brand-dial__notch--ghost" : ""}`}
-                  transform={`translate(${pos.x} ${pos.y})`}
-                  opacity={fade}
-                >
-                  <circle r={dotR} className="brand-dial__dot" />
-                  <line x1={0} y1={0} x2={tickX} y2={tickY} className="brand-dial__tick" />
-                </g>
-              );
-            })}
-          </g>
-
-          <g className="brand-dial__needle">
-            <line
-              x1={needleTail.x}
-              y1={needleTail.y}
-              x2={needleTip.x}
-              y2={needleTip.y}
-              className="brand-dial__needle-shaft"
+            <path
+              d={arcPathForGeom(geom, GHOST_SPAN_DEG, outerRadius)}
+              className="brand-dial__track brand-dial__track--ghost"
+              fill="none"
             />
-            <circle cx={hub.x} cy={hub.y} r={geom.notchR + 2.5} className="brand-dial__needle-hub" />
-            <circle cx={needleTip.x} cy={needleTip.y} r={2.5} className="brand-dial__needle-cap" />
-          </g>
-        </svg>
+            <path
+              d={arcPathForGeom(geom, GHOST_SPAN_DEG, innerRadius)}
+              className="brand-dial__track brand-dial__track--inner"
+              fill="none"
+            />
+            <path
+              d={arcPathForGeom(geom, ARC_SPAN_DEG)}
+              className="brand-dial__track brand-dial__track--main"
+              fill="none"
+            />
+
+            <g
+              className="brand-dial__ring"
+              transform={`rotate(${-rotationIndex * STEP_DEG} ${geom.cx} ${geom.cy})`}
+            >
+              {brands.map((brand, index) => {
+                const displayAngle = notchAngle(index, rotationIndex, geom.needleAngle);
+                if (!isNotchVisible(displayAngle, geom.needleAngle)) return null;
+
+                const zone = notchZone(displayAngle, geom.needleAngle);
+                const pos = polarToCartesian(
+                  geom.cx,
+                  geom.cy,
+                  geom.radius,
+                  geom.needleAngle + index * STEP_DEG,
+                );
+                const dist = Math.abs(displayAngle - geom.needleAngle);
+                const fade =
+                  zone === "ghost"
+                    ? Math.max(0.1, 0.35 - dist / GHOST_SPAN_DEG)
+                    : Math.max(0.3, 1 - dist / (ARC_SPAN_DEG / 2 + STEP_DEG));
+                const tickLen = zone === "ghost" ? geom.tickLen * 0.65 : geom.tickLen;
+                const tickX = roundSvg(((geom.cx - pos.x) / geom.radius) * tickLen);
+                const tickY = roundSvg(((geom.cy - pos.y) / geom.radius) * tickLen);
+                const dotR = zone === "ghost" ? geom.notchR * 0.7 : geom.notchR;
+
+                return (
+                  <g
+                    key={brand.id}
+                    className={`brand-dial__notch${zone === "ghost" ? " brand-dial__notch--ghost" : ""}`}
+                    transform={`translate(${pos.x} ${pos.y})`}
+                    opacity={fade}
+                  >
+                    <circle r={dotR} className="brand-dial__dot" />
+                    <line x1={0} y1={0} x2={tickX} y2={tickY} className="brand-dial__tick" />
+                  </g>
+                );
+              })}
+            </g>
+
+            <g className="brand-dial__needle">
+              <line
+                x1={needleTail.x}
+                y1={needleTail.y}
+                x2={needleTip.x}
+                y2={needleTip.y}
+                className="brand-dial__needle-shaft"
+              />
+              <circle cx={hub.x} cy={hub.y} r={geom.notchR + 2.5} className="brand-dial__needle-hub" />
+              <circle cx={needleTip.x} cy={needleTip.y} r={2.5} className="brand-dial__needle-cap" />
+            </g>
+          </svg>
         </div>
 
         <p className="brand-dial__counter" aria-hidden="true">

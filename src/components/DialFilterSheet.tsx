@@ -51,21 +51,18 @@ export function DialFilterSheet({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
+  if (!open) return null;
+
   return (
     <>
       <button
         type="button"
-        className={`dial-filter-sheet__backdrop${open ? " dial-filter-sheet__backdrop--open" : ""}`}
+        className="dial-filter-sheet__backdrop dial-filter-sheet__backdrop--open"
         onClick={onClose}
         aria-label="Fermer les filtres"
-        tabIndex={open ? 0 : -1}
       />
 
-      <aside
-        className={`dial-filter-sheet${open ? " dial-filter-sheet--open" : ""}`}
-        aria-hidden={!open}
-        aria-label="Filtres"
-      >
+      <aside className="dial-filter-sheet dial-filter-sheet--open" aria-label="Filtres">
         <div className="dial-filter-sheet__head">
           <div>
             <h2 className="dial-filter-sheet__title">Affiner</h2>
