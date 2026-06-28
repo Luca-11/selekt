@@ -9,14 +9,30 @@ export const DIAL_DURATION = {
   keyboard: 180,
 } as const;
 
-/** Delta wheel cumulé (px) avant de passer à la marque suivante. */
-export const WHEEL_STEP_THRESHOLD = 340;
+/** Delta wheel cumulé (px) avant de passer à la marque suivante — trackpad. */
+export const WHEEL_STEP_THRESHOLD_TRACKPAD = 430;
+
+/** Intervalle minimum entre deux pas — trackpad. */
+export const WHEEL_MIN_STEP_MS_TRACKPAD = 580;
+
+/** Intervalle minimum entre deux pas — molette souris. */
+export const WHEEL_MIN_STEP_MS_MOUSE = 380;
 
 /** Délai sans scroll avant de remettre l'accumulateur à zéro. */
 export const WHEEL_IDLE_RESET_MS = 300;
 
-/** Intervalle minimum entre deux pas — aligné sur l'animation scroll. */
-export const WHEEL_MIN_STEP_MS = 520;
+/** @deprecated alias trackpad */
+export const WHEEL_STEP_THRESHOLD = WHEEL_STEP_THRESHOLD_TRACKPAD;
+
+/** @deprecated alias trackpad */
+export const WHEEL_MIN_STEP_MS = WHEEL_MIN_STEP_MS_TRACKPAD;
+
+/** Molette souris (lignes ou pas discrets en pixels) vs trackpad continu. */
+export function isMouseWheel(event: WheelEvent): boolean {
+  if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) return true;
+  const y = Math.abs(event.deltaY);
+  return event.deltaMode === WheelEvent.DOM_DELTA_PIXEL && y >= 40;
+}
 
 export type DialMotion = keyof typeof DIAL_DURATION;
 

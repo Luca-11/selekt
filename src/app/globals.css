@@ -2308,7 +2308,7 @@ html.immersive-dial body {
 
 .brand-dial-layout--immersive.brand-dial-layout--mobile {
   grid-template-columns: 1fr;
-  grid-template-rows: 1fr minmax(200px, 34dvh);
+  grid-template-rows: minmax(0, 1fr) minmax(100px, 24dvh);
 }
 
 .brand-dial-layout--mobile {
@@ -2320,7 +2320,7 @@ html.immersive-dial body {
 .brand-dial-layout--mobile .brand-dial-layout__panel {
   order: 1;
   min-height: 0;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .brand-dial-layout--mobile .brand-dial {
@@ -2366,46 +2366,196 @@ html.immersive-dial body {
   box-shadow: var(--focus-ring), var(--shadow-sm);
 }
 
-.brand-dial__hint {
+.brand-dial__sr-only {
   position: absolute;
-  top: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-  margin: 0;
-  font-family: var(--font-mono), monospace;
-  font-size: 0.5625rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-faint);
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
   white-space: nowrap;
-  pointer-events: none;
+  border: 0;
 }
 
-.brand-dial-layout:not(.brand-dial-layout--mobile) .brand-dial__hint {
-  top: auto;
-  bottom: 12px;
-  left: 12px;
-  transform: none;
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
-}
-
-.brand-dial__svg {
-  width: 100%;
+.brand-dial__stage {
+  position: relative;
+  height: 100%;
+  width: auto;
   max-width: 220px;
-  height: auto;
+  max-height: 100%;
+  aspect-ratio: var(--dial-aspect-w) / var(--dial-aspect-h);
+  margin-inline: auto;
+  align-self: center;
+}
+
+.brand-dial-layout--immersive .brand-dial__stage {
+  width: 100%;
+  max-width: none;
+}
+
+.brand-dial__stage .brand-dial__svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: none;
   overflow: visible;
   transition: opacity 0.2s var(--ease-out);
 }
 
-.brand-dial-layout--mobile .brand-dial__svg {
-  max-width: 100%;
+.brand-dial__nav-hint {
+  position: absolute;
+  z-index: 3;
+  left: var(--nav-hint-x, 50%);
+  top: var(--nav-hint-y, 50%);
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-muted);
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--shadow-sm);
+  color: var(--text-secondary);
+  pointer-events: none;
+  opacity: 1;
+  animation: dial-nav-enter 0.55s var(--ease-out);
+  transition:
+    opacity 0.45s var(--ease-out),
+    transform 0.45s var(--ease-out),
+    visibility 0.45s;
 }
 
-.brand-dial-layout--immersive .brand-dial__svg {
-  max-width: none;
-  height: 100%;
+.brand-dial__nav-hint--hidden {
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, -50%) scale(0.94);
+}
+
+.brand-dial__nav-hint--mobile {
+  padding: 8px 12px;
+}
+
+.brand-dial__nav-hint-icon {
+  display: block;
+  overflow: visible;
+}
+
+.brand-dial__nav-hint-label {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.625rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.brand-dial__nav-hint-wheel {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: dial-nav-wheel 1.7s ease-in-out infinite;
+}
+
+.brand-dial__nav-hint-dot {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: dial-nav-swipe 1.7s ease-in-out infinite;
+}
+
+.brand-dial__nav-hint-track {
+  opacity: 0.35;
+}
+
+.brand-dial__nav-hint-arrow--down {
+  opacity: 0.45;
+  animation: dial-nav-arrow-down 1.7s ease-in-out infinite;
+}
+
+.brand-dial__nav-hint-arrow--left {
+  opacity: 0.35;
+  animation: dial-nav-arrow-left 1.7s ease-in-out infinite;
+}
+
+.brand-dial__nav-hint-arrow--right {
+  opacity: 0.35;
+  animation: dial-nav-arrow-right 1.7s ease-in-out infinite;
+}
+
+.brand-dial-layout--mobile .brand-dial__stage {
   width: 100%;
+  max-width: none;
+}
+
+@keyframes dial-nav-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes dial-nav-wheel {
+  0%,
+  18%,
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  55% {
+    transform: translateY(5px);
+    opacity: 0.35;
+  }
+}
+
+@keyframes dial-nav-swipe {
+  0%,
+  18%,
+  100% {
+    transform: translateX(-7px);
+    opacity: 0.45;
+  }
+  55% {
+    transform: translateX(7px);
+    opacity: 1;
+  }
+}
+
+@keyframes dial-nav-arrow-down {
+  0%,
+  30%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  55% {
+    opacity: 0.85;
+    transform: translateY(2px);
+  }
+}
+
+@keyframes dial-nav-arrow-left {
+  0%,
+  30%,
+  100% {
+    opacity: 0.2;
+  }
+  55% {
+    opacity: 0.75;
+  }
+}
+
+@keyframes dial-nav-arrow-right {
+  0%,
+  30%,
+  100% {
+    opacity: 0.75;
+  }
+  55% {
+    opacity: 0.2;
+  }
 }
 
 .brand-dial__track {
@@ -2497,27 +2647,32 @@ html.immersive-dial body {
 
 .brand-dial-layout__panel {
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
+  height: 100%;
 }
 
 .brand-dial-layout--immersive .brand-dial-layout__panel {
-  justify-content: center;
-  padding: clamp(28px, 5vw, 88px);
-  overflow-y: auto;
+  justify-content: stretch;
+  padding: clamp(20px, 3.5vw, 56px);
+  overflow: hidden;
   border-left: 1px solid var(--border-subtle);
 }
 
 .brand-dial-layout--immersive.brand-dial-layout--mobile .brand-dial-layout__panel {
   border-left: none;
   border-bottom: 1px solid var(--border-subtle);
-  padding: clamp(20px, 4vw, 32px);
+  padding: clamp(14px, 3vw, 24px);
 }
 
 .brand-dial-panel {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: clamp(10px, 1.8vh, 16px);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .brand-dial-layout--ready .brand-dial-panel {
@@ -2529,38 +2684,88 @@ html.immersive-dial body {
 }
 
 .brand-dial-layout--immersive .brand-dial-panel {
-  gap: clamp(16px, 2.5vh, 28px);
-  max-width: 680px;
+  max-width: 640px;
   width: 100%;
+  margin-inline: auto;
 }
 
-.brand-dial-layout--immersive .brand-dial-panel__name {
-  font-size: clamp(2rem, 4.5vw, 3.25rem);
-}
-
-.brand-dial-layout--immersive .brand-dial-panel__visual .brand-image {
-  max-height: min(42vh, 420px);
-  aspect-ratio: 16 / 10;
-}
-
-.brand-dial-layout--immersive .brand-dial-panel__desc {
-  font-size: clamp(0.9375rem, 1.6vw, 1.0625rem);
-  max-width: 52ch;
-}
-
-.brand-dial-layout--immersive .brand-dial__hint {
-  opacity: 0.55;
-}
-
-.brand-dial-layout--immersive .brand-dial__counter {
-  font-size: 0.75rem;
-}
-
-.brand-dial-panel__header {
+.brand-dial-panel__top {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
+  flex-shrink: 0;
+}
+
+.brand-dial-layout--immersive .brand-dial-panel__name {
+  font-size: clamp(1.5rem, 3.2vw, 2.75rem);
+}
+
+.brand-dial-layout--immersive .brand-dial-panel__visual .brand-image {
+  max-height: min(28vh, 300px);
+  aspect-ratio: 16 / 10;
+}
+
+.brand-dial-panel__visual {
+  flex-shrink: 1;
+  min-height: 0;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+}
+
+.brand-dial-panel__body {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(8px, 1.2vh, 12px);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.brand-dial-panel__copy {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow: hidden;
+}
+
+.brand-dial-layout--immersive .brand-dial-panel__desc {
+  font-size: clamp(0.875rem, 1.4vw, 1rem);
+  max-width: 52ch;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
+}
+
+.brand-dial-panel__actu {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.brand-dial-panel__footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.brand-dial-panel__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.brand-dial-layout--immersive .brand-dial__counter {
+  font-size: 0.75rem;
 }
 
 .brand-dial-panel__index {
@@ -2586,12 +2791,6 @@ html.immersive-dial body {
   color: var(--text-faint);
 }
 
-.brand-dial-panel__visual {
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  border: 1px solid var(--border-subtle);
-}
-
 .brand-dial-panel__visual-link {
   display: block;
   color: inherit;
@@ -2611,7 +2810,7 @@ html.immersive-dial body {
 }
 
 .brand-dial-panel__sub {
-  margin: 6px 0 0;
+  margin: 4px 0 0;
   font-size: 0.8125rem;
   color: var(--text-muted);
 }
@@ -2619,7 +2818,7 @@ html.immersive-dial body {
 .brand-dial-panel__desc {
   margin: 0;
   font-size: 0.9375rem;
-  line-height: 1.6;
+  line-height: 1.55;
   color: var(--text-secondary);
 }
 
@@ -2628,12 +2827,15 @@ html.immersive-dial body {
   font-size: 0.8125rem;
   font-style: italic;
   color: var(--text-muted);
+  line-height: 1.45;
 }
 
 .brand-dial-panel__tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 5px;
+  max-height: 2.4em;
+  overflow: hidden;
 }
 
 .brand-dial-panel__tag {
@@ -2653,8 +2855,8 @@ html.immersive-dial body {
 
 .brand-dial-panel__visit {
   display: inline-flex;
-  align-self: flex-start;
-  padding: 10px 16px;
+  flex-shrink: 0;
+  padding: 8px 14px;
   border-radius: 999px;
   border: 1px solid var(--border-muted);
   font-size: 0.8125rem;
@@ -2674,8 +2876,9 @@ html.immersive-dial body {
 }
 
 .brand-dial-panel .brand-card__social {
+  flex-shrink: 0;
   padding: 0;
-  margin-top: 4px;
+  margin-top: auto;
 }
 
 @keyframes dial-panel-in {
@@ -2700,6 +2903,15 @@ html.immersive-dial body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .brand-dial__nav-hint,
+  .brand-dial__nav-hint-wheel,
+  .brand-dial__nav-hint-dot,
+  .brand-dial__nav-hint-arrow--down,
+  .brand-dial__nav-hint-arrow--left,
+  .brand-dial__nav-hint-arrow--right {
+    animation: none;
+  }
+
   .brand-dial__notch,
   .brand-dial-panel {
     animation: none;
@@ -2811,13 +3023,71 @@ html.immersive-dial body {
 }
 
 @media (max-width: 768px) {
+  .app-chrome {
+    padding: 6px var(--shell-pad);
+    gap: 6px;
+  }
+
+  .app-chrome .logo {
+    font-size: 0.95rem;
+  }
+
   .app-chrome__library {
     display: none;
   }
 
   .app-chrome .site-nav__link {
-    padding-inline: 8px;
-    font-size: 0.6875rem;
+    padding-inline: 6px;
+    font-size: 0.625rem;
+  }
+
+  .app-chrome__filter {
+    padding: 4px 9px;
+    font-size: 0.5625rem;
+  }
+
+  .app-chrome .theme-toggle__track {
+    width: 38px;
+    height: 22px;
+  }
+
+  .app-chrome .theme-toggle__thumb {
+    width: 16px;
+    height: 16px;
+    margin-top: -8px;
+  }
+
+  .brand-dial-layout--immersive.brand-dial-layout--mobile {
+    grid-template-rows: minmax(0, 1fr) minmax(88px, 22dvh);
+  }
+
+  .brand-dial-layout--immersive .brand-dial-panel__visual .brand-image {
+    max-height: min(22vh, 200px);
+  }
+
+  .brand-dial-layout--immersive .brand-dial-panel__name {
+    font-size: clamp(1.25rem, 5.5vw, 1.75rem);
+  }
+
+  .brand-dial-layout--immersive .brand-dial-panel__desc {
+    -webkit-line-clamp: 3;
+  }
+
+  .dial-filter-sheet {
+    top: auto;
+    bottom: 0;
+    right: 0;
+    left: 0;
+    width: 100%;
+    height: min(88dvh, 640px);
+    border-left: none;
+    border-top: 1px solid var(--border-muted);
+    border-radius: 16px 16px 0 0;
+    transform: translateY(100%);
+  }
+
+  .dial-filter-sheet--open {
+    transform: translateY(0);
   }
 }
 
@@ -2991,31 +3261,8 @@ html[data-filter-sheet-open] {
 }
 
 .brand-dial-panel__filter-hint {
-  margin: -8px 0 0;
+  margin: -4px 0 0;
   font-size: 0.75rem;
   color: var(--text-muted);
   font-style: italic;
-}
-
-.brand-dial-panel__header {
-  justify-content: flex-end;
-}
-
-@media (max-width: 768px) {
-  .dial-filter-sheet {
-    top: auto;
-    bottom: 0;
-    right: 0;
-    left: 0;
-    width: 100%;
-    height: min(88dvh, 640px);
-    border-left: none;
-    border-top: 1px solid var(--border-muted);
-    border-radius: 16px 16px 0 0;
-    transform: translateY(100%);
-  }
-
-  .dial-filter-sheet--open {
-    transform: translateY(0);
-  }
 }

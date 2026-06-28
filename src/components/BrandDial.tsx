@@ -4,11 +4,14 @@ import {
   useCallback,
   useEffect,
   useId,
+  useMemo,
   useRef,
   useState,
 } from "react";
+import type { CSSProperties } from "react";
 import type { Brand } from "@/types/brand";
 import { BrandDialPanel } from "@/components/BrandDialPanel";
+import { DialNavHint } from "@/components/DialNavHint";
 import {
   ARC_SPAN_DEG,
   clampIndex,
@@ -21,11 +24,13 @@ import {
   roundSvg,
   STEP_DEG,
   WHEEL_IDLE_RESET_MS,
-  WHEEL_MIN_STEP_MS,
-  WHEEL_STEP_THRESHOLD,
+  WHEEL_MIN_STEP_MS_MOUSE,
+  WHEEL_MIN_STEP_MS_TRACKPAD,
+  WHEEL_STEP_THRESHOLD_TRACKPAD,
+  isMouseWheel,
   type DialMotion,
 } from "@/lib/arc-dial";
-import { arcPathForGeom, computeDialGeometry, type DialGeom } from "@/lib/dial-geometry";
+import { arcPathForGeom, computeDialGeometry, navHintAnchor, type DialGeom } from "@/lib/dial-geometry";
 import { useDialRotation } from "@/hooks/useDialRotation";
 
 interface BrandDialProps {
@@ -118,6 +123,33 @@ export function BrandDial({
   const wheelAccumulator = useRef(0);
   const wheelLastStepAt = useRef(0);
   const wheelIdleTimer = useRef<number | null>(null);
+  const [navHintVisible, setNavHintVisible] = useState(false);
+
+  const dismissNavHint = useCallback(() => {
+    setNavHintVisible((visible) => {
+      if (!visible) return visible;
+      try {
+        sessionStorage.setItem("selekt-dial-hint-seen", "1");
+      } catch {
+        /* sessionStorage indisponible */
+      }
+      return false;
+    });
+  }, []);
+
+  useEffect(() => {
+    try {
+      setNavHintVisible(sessionStorage.getItem("selekt-dial-hint-seen") !== "1");
+    } catch {
+      setNavHintVisible(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!navHintVisible) return;
+    const timeout = window.setTimeout(dismissNavHint, 10_000);
+    return () => window.clearTimeout(timeout);
+  }, [dismissNavHint, navHintVisible]);
 
   const safeIndex = clampIndex(activeIndex, brands.length);
   const [animDuration, setAnimDuration] = useState<number>(DIAL_DURATION.scroll);
@@ -144,9 +176,10 @@ export function BrandDial({
 
   const step = useCallback(
     (delta: number, nextMotion: DialMotion) => {
+      dismissNavHint();
       goTo(safeIndex + delta, nextMotion);
     },
-    [goTo, safeIndex],
+    [dismissNavHint, goTo, safeIndex],
   );
 
   useEffect(() => {
@@ -158,7 +191,18 @@ export function BrandDial({
       if (brands.length <= 1) return;
 
       const now = Date.now();
-      if (now - wheelLastStepAt.current < WHEEL_MIN_STEP_MS) return;
+      const mouseWheel = isMouseWheel(event);
+
+      if (mouseWheel) {
+        if (now - wheelLastStepAt.current < WHEEL_MIN_STEP_MS_MOUSE) return;
+        if (Math.abs(event.deltaY) < 1) return;
+        step(event.deltaY > 0 ? 1 : -1, "scroll");
+        wheelAccumulator.current = 0;
+        wheelLastStepAt.current = now;
+        return;
+      }
+
+      if (now - wheelLastStepAt.current < WHEEL_MIN_STEP_MS_TRACKPAD) return;
 
       let delta = event.deltaY;
       if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) {
@@ -176,7 +220,7 @@ export function BrandDial({
         wheelIdleTimer.current = null;
       }, WHEEL_IDLE_RESET_MS);
 
-      if (Math.abs(wheelAccumulator.current) < WHEEL_STEP_THRESHOLD) return;
+      if (Math.abs(wheelAccumulator.current) < WHEEL_STEP_THRESHOLD_TRACKPAD) return;
 
       const direction = wheelAccumulator.current > 0 ? 1 : -1;
       step(direction, "scroll");
@@ -221,6 +265,7 @@ export function BrandDial({
   }, [narrow, step]);
 
   const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    dismissNavHint();
     if (brands.length <= 1) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     dragRef.current = {
@@ -274,6 +319,19 @@ export function BrandDial({
     .filter(Boolean)
     .join(" ");
 
+  const stageStyle = {
+    "--dial-aspect-w": geom.viewW,
+    "--dial-aspect-h": geom.viewH,
+  } as CSSProperties;
+
+  const navHintAnchorPct = useMemo(() => {
+    const anchor = navHintAnchor(geom, narrow);
+    return {
+      x: (anchor.x / geom.viewW) * 100,
+      y: (anchor.y / geom.viewH) * 100,
+    };
+  }, [geom, narrow]);
+
   return (
     <section ref={layoutRef} className={layoutClass} aria-labelledby={labelId}>
       <div
@@ -291,11 +349,19 @@ export function BrandDial({
         aria-valuetext={panelBrand?.name ?? ""}
         tabIndex={0}
       >
-        <p id={labelId} className="brand-dial__hint">
-          Glisser · scroll · flèches
+        <p id={labelId} className="brand-dial__sr-only">
+          Faites défiler, glissez ou utilisez les flèches pour parcourir les marques.
         </p>
 
-        <svg
+        <div className="brand-dial__stage" style={stageStyle}>
+          <DialNavHint
+            narrow={narrow}
+            visible={navHintVisible && geomReady}
+            anchorX={navHintAnchorPct.x}
+            anchorY={navHintAnchorPct.y}
+          />
+
+          <svg
           className="brand-dial__svg"
           viewBox={`0 0 ${geom.viewW} ${geom.viewH}`}
           preserveAspectRatio="xMidYMid meet"
@@ -369,6 +435,7 @@ export function BrandDial({
             <circle cx={needleTip.x} cy={needleTip.y} r={2.5} className="brand-dial__needle-cap" />
           </g>
         </svg>
+        </div>
 
         <p className="brand-dial__counter" aria-hidden="true">
           {panelIndex + 1}

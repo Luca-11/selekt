@@ -66,6 +66,21 @@ export function computeDialGeometry(
   };
 }
 
+/** Point d'ancrage de l'indicateur de navigation, dans les coords du viewBox. */
+export function navHintAnchor(geom: DialGeom, narrow: boolean): { x: number; y: number } {
+  if (narrow) {
+    return {
+      x: geom.cx,
+      y: geom.cy - geom.radius * 0.48,
+    };
+  }
+
+  return {
+    x: geom.cx + geom.radius * 0.34,
+    y: geom.cy,
+  };
+}
+
 export function arcPathForGeom(geom: DialGeom, spanDeg = ARC_SPAN_DEG, radius = geom.radius): string {
   const start = polar(geom.cx, geom.cy, radius, geom.needleAngle - spanDeg / 2);
   const end = polar(geom.cx, geom.cy, radius, geom.needleAngle + spanDeg / 2);
