@@ -3226,7 +3226,7 @@ html.immersive-dial body {
   background: rgba(0, 0, 0, 0.2);
   opacity: 0;
   pointer-events: none;
-  transition: opacity var(--duration-normal) var(--ease-out);
+  transition: opacity var(--duration-slow) var(--ease-out);
   cursor: pointer;
 }
 
@@ -3249,13 +3249,14 @@ html.immersive-dial body {
   background: var(--bg);
   border-left: 1px solid var(--border-muted);
   box-shadow: var(--shadow-md);
-  transform: translateX(100%);
+  transform: translateX(102%);
   visibility: hidden;
   pointer-events: none;
   transition:
     transform var(--duration-slow) var(--ease-out),
     visibility 0s linear var(--duration-slow);
   overflow-y: auto;
+  will-change: transform;
 }
 
 .dial-filter-sheet--open {
@@ -3279,11 +3280,18 @@ html.immersive-dial body {
     border-left: none;
     border-top: 1px solid var(--border-muted);
     border-radius: 16px 16px 0 0;
-    transform: translateY(100%);
+    transform: translate3d(0, 102%, 0);
   }
 
   .dial-filter-sheet--open {
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dial-filter-sheet__backdrop,
+  .dial-filter-sheet {
+    transition-duration: 1ms;
   }
 }
 

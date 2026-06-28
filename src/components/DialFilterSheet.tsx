@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AnimatedCount } from "@/components/AnimatedCount";
 import { TransitionLink } from "@/components/TransitionLink";
 import { SORT_LABELS, type SortOption } from "@/lib/brand-filters";
+
+const SHEET_ANIM_MS = 450;
 
 interface DialFilterSheetProps {
   open: boolean;
@@ -42,27 +44,76 @@ export function DialFilterSheet({
   onSearchChange,
   onReset,
 }: DialFilterSheetProps) {
+  const [rendered, setRendered] = useState(open);
+  const [active, setActive] = useState(false);
+  const exitTimerRef = useRef<number | null>(null);
+
+  const clearExitTimer = useCallback(() => {
+    if (exitTimerRef.current !== null) {
+      window.clearTimeout(exitTimerRef.current);
+      exitTimerRef.current = null;
+    }
+  }, []);
+
+  const finishExit = useCallback(() => {
+    clearExitTimer();
+    setRendered(false);
+    document.documentElement.removeAttribute("data-filter-sheet-open");
+  }, [clearExitTimer]);
+
+  useLayoutEffect(() => {
+    if (open) setRendered(true);
+  }, [open]);
+
   useEffect(() => {
-    if (!open) return;
+    if (!rendered) return;
+
+    document.documentElement.setAttribute("data-filter-sheet-open", "");
+
+    if (open) {
+      clearExitTimer();
+      const frame = requestAnimationFrame(() => setActive(true));
+      return () => cancelAnimationFrame(frame);
+    }
+
+    setActive(false);
+    exitTimerRef.current = window.setTimeout(finishExit, SHEET_ANIM_MS);
+
+    return clearExitTimer;
+  }, [clearExitTimer, finishExit, open, rendered]);
+
+  useEffect(() => {
+    if (!rendered || !active) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  }, [active, onClose, rendered]);
 
-  if (!open) return null;
+  const onSheetTransitionEnd = (event: React.TransitionEvent<HTMLElement>) => {
+    if (event.target !== event.currentTarget) return;
+    if (event.propertyName !== "transform") return;
+    if (!open && !active) finishExit();
+  };
+
+  if (!rendered) return null;
 
   return (
     <>
       <button
         type="button"
-        className="dial-filter-sheet__backdrop dial-filter-sheet__backdrop--open"
+        className={`dial-filter-sheet__backdrop${active ? " dial-filter-sheet__backdrop--open" : ""}`}
         onClick={onClose}
         aria-label="Fermer les filtres"
       />
 
-      <aside className="dial-filter-sheet dial-filter-sheet--open" aria-label="Filtres">
+      <aside
+        className={`dial-filter-sheet${active ? " dial-filter-sheet--open" : ""}`}
+        aria-label="Filtres"
+        aria-hidden={!active}
+        onTransitionEnd={onSheetTransitionEnd}
+      >
         <div className="dial-filter-sheet__head">
           <div>
             <h2 className="dial-filter-sheet__title">Affiner</h2>

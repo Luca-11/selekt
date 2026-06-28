@@ -53,11 +53,6 @@ export function SelektApp({ brands }: SelektAppProps) {
     return () => document.documentElement.classList.remove("immersive-dial");
   }, []);
 
-  useEffect(() => {
-    document.documentElement.toggleAttribute("data-filter-sheet-open", filtersOpen);
-    return () => document.documentElement.removeAttribute("data-filter-sheet-open");
-  }, [filtersOpen]);
-
   return (
     <div className="app app--immersive">
       <AppChrome
